@@ -11,6 +11,13 @@ export type ActionState = {
   fieldErrors?: Record<string, string[]>;
   /** El formulario lo usa para cerrarse y limpiarse tras un guardado correcto. */
   success?: boolean;
+  /**
+   * Lo que el usuario había escrito. React resetea los campos no controlados en
+   * cuanto la acción termina, así que sin esto un error de validación o un
+   * duplicado le borraría todo lo tecleado. El formulario lo reinyecta como
+   * defaultValue.
+   */
+  values?: Record<string, string>;
 };
 
 const SLUG = /^[a-z0-9-]+$/;
@@ -54,7 +61,7 @@ export async function signIn(
   const next = String(formData.get("next") ?? "/admin");
 
   if (!email || !password) {
-    return { error: "Introduce email y contraseña." };
+    return { error: "Introduce email y contraseña.", values: { email } };
   }
 
   const supabase = await createServerSupabaseClient();
@@ -63,7 +70,7 @@ export async function signIn(
   if (error) {
     // Mensaje genérico a propósito: distinguir "usuario no existe" de
     // "contraseña incorrecta" permitiría enumerar cuentas del equipo.
-    return { error: "Email o contraseña incorrectos." };
+    return { error: "Email o contraseña incorrectos.", values: { email } };
   }
 
   // Tener cuenta en Supabase Auth no basta para entrar al panel: hay que estar en
@@ -73,7 +80,7 @@ export async function signIn(
 
   if (!isAdmin) {
     await supabase.auth.signOut();
-    return { error: "Esta cuenta no tiene acceso al panel." };
+    return { error: "Esta cuenta no tiene acceso al panel.", values: { email } };
   }
 
   // Solo rutas internas del admin: un `next` controlado por el atacante podría
@@ -104,17 +111,20 @@ export async function createExamPage(
     return { error: "Tu sesión ha caducado. Vuelve a iniciar sesión." };
   }
 
-  const parsed = examPageSchema.safeParse({
-    client_slug: formData.get("client_slug"),
-    language: formData.get("language"),
-    client_name: formData.get("client_name"),
-    destination_url: formData.get("destination_url"),
-  });
+  const values = {
+    client_slug: String(formData.get("client_slug") ?? ""),
+    language: String(formData.get("language") ?? ""),
+    client_name: String(formData.get("client_name") ?? ""),
+    destination_url: String(formData.get("destination_url") ?? ""),
+  };
+
+  const parsed = examPageSchema.safeParse(values);
 
   if (!parsed.success) {
     return {
       error: "Revisa los campos marcados.",
       fieldErrors: z.flattenError(parsed.error).fieldErrors as Record<string, string[]>,
+      values,
     };
   }
 
@@ -126,9 +136,10 @@ export async function createExamPage(
     if (error.code === "23505") {
       return {
         error: `Ya existe una página para /${parsed.data.client_slug}/${parsed.data.language}.`,
+        values,
       };
     }
-    return { error: `No se pudo guardar: ${error.message}` };
+    return { error: `No se pudo guardar: ${error.message}`, values };
   }
 
   revalidatePath("/admin");

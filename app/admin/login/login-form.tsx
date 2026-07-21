@@ -1,26 +1,17 @@
 "use client";
 
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
 
 import { signIn, type ActionState } from "@/app/admin/actions";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full rounded-xl bg-neutral-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-neutral-700 disabled:opacity-60"
-    >
-      {pending ? "Entrando…" : "Entrar"}
-    </button>
-  );
-}
-
 export function LoginForm({ next }: { next: string }) {
-  const [state, formAction] = useActionState<ActionState, FormData>(signIn, {});
+  // El `pending` viene de useActionState, no de useFormStatus: con useFormStatus
+  // el botón se quedaba en «Entrando…» y deshabilitado para siempre cuando la
+  // acción devolvía un error, y había que recargar para reintentar.
+  const [state, formAction, isPending] = useActionState<ActionState, FormData>(
+    signIn,
+    {},
+  );
 
   return (
     <form action={formAction} className="mt-8 space-y-4">
@@ -35,6 +26,10 @@ export function LoginForm({ next }: { next: string }) {
           name="email"
           type="email"
           autoComplete="username"
+          // React vacía los campos al terminar la acción. Sin esto, fallar la
+          // contraseña obligaría a reescribir también el email.
+          defaultValue={state.values?.email ?? ""}
+          key={state.values?.email ?? ""}
           required
           className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-neutral-900"
         />
@@ -60,7 +55,13 @@ export function LoginForm({ next }: { next: string }) {
         </p>
       ) : null}
 
-      <SubmitButton />
+      <button
+        type="submit"
+        disabled={isPending}
+        className="w-full rounded-xl bg-neutral-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-neutral-700 disabled:opacity-60"
+      >
+        {isPending ? "Entrando…" : "Entrar"}
+      </button>
     </form>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
 
 import { createExamPage, type ActionState } from "@/app/admin/actions";
 
@@ -12,6 +11,7 @@ function Field({
   placeholder,
   type = "text",
   errors,
+  defaultValue,
 }: {
   name: string;
   label: string;
@@ -19,6 +19,7 @@ function Field({
   placeholder?: string;
   type?: string;
   errors?: string[];
+  defaultValue?: string;
 }) {
   return (
     <div>
@@ -30,6 +31,10 @@ function Field({
         name={name}
         type={type}
         placeholder={placeholder}
+        // React vacía los campos al terminar la acción; sin esto, un duplicado
+        // obligaría a reescribir el formulario entero.
+        defaultValue={defaultValue ?? ""}
+        key={defaultValue ?? ""}
         required
         aria-describedby={hint ? `${name}-hint` : undefined}
         className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-neutral-900"
@@ -46,27 +51,19 @@ function Field({
   );
 }
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700 disabled:opacity-60"
-    >
-      {pending ? "Guardando…" : "Guardar página"}
-    </button>
-  );
-}
-
 export function NewPageForm() {
   const [open, setOpen] = useState(false);
 
-  // El cierre se hace aquí y no en un useEffect: cerrar es la consecuencia
-  // directa del guardado, no una sincronización con estado externo. Al
-  // desmontarse el formulario, los campos quedan limpios para la próxima vez.
-  const [state, formAction] = useActionState<ActionState, FormData>(
+  // Dos cosas aquí:
+  //
+  // El cierre se hace en la propia acción y no en un useEffect: cerrar es la
+  // consecuencia directa del guardado, no una sincronización con estado externo.
+  // Al desmontarse el formulario, los campos quedan limpios para la próxima vez.
+  //
+  // `isPending` sale de useActionState y no de useFormStatus: este último dejaba
+  // el botón en «Guardando…» y deshabilitado para siempre cuando la acción
+  // devolvía un error (por ejemplo un duplicado), obligando a recargar.
+  const [state, formAction, isPending] = useActionState<ActionState, FormData>(
     async (prevState, formData) => {
       const result = await createExamPage(prevState, formData);
       if (result.success) {
@@ -100,6 +97,7 @@ export function NewPageForm() {
           placeholder="cimesa"
           hint="Aparece en la URL. Minúsculas, números y guiones."
           errors={state.fieldErrors?.client_slug}
+          defaultValue={state.values?.client_slug}
         />
         <Field
           name="language"
@@ -107,6 +105,7 @@ export function NewPageForm() {
           placeholder="es"
           hint="También aparece en la URL, ej. es, en, pt."
           errors={state.fieldErrors?.language}
+          defaultValue={state.values?.language}
         />
         <Field
           name="client_name"
@@ -114,6 +113,7 @@ export function NewPageForm() {
           placeholder="CIMESA"
           hint="Es el nombre que ve el alumno en la página."
           errors={state.fieldErrors?.client_name}
+          defaultValue={state.values?.client_name}
         />
         <Field
           name="destination_url"
@@ -122,6 +122,7 @@ export function NewPageForm() {
           placeholder="https://…"
           hint="Adonde lleva el botón «Ir a mi examen»."
           errors={state.fieldErrors?.destination_url}
+          defaultValue={state.values?.destination_url}
         />
 
         {state.error ? (
@@ -131,7 +132,13 @@ export function NewPageForm() {
         ) : null}
 
         <div className="flex items-center gap-3 pt-1">
-          <SubmitButton />
+          <button
+            type="submit"
+            disabled={isPending}
+            className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700 disabled:opacity-60"
+          >
+            {isPending ? "Guardando…" : "Guardar página"}
+          </button>
           <button
             type="button"
             onClick={() => setOpen(false)}
