@@ -66,6 +66,16 @@ export async function signIn(
     return { error: "Email o contraseña incorrectos." };
   }
 
+  // Tener cuenta en Supabase Auth no basta para entrar al panel: hay que estar en
+  // app_admins. Si el registro público del proyecto está abierto, cualquiera
+  // puede crearse una cuenta — pero se queda aquí.
+  const { data: isAdmin } = await supabase.rpc("is_app_admin");
+
+  if (!isAdmin) {
+    await supabase.auth.signOut();
+    return { error: "Esta cuenta no tiene acceso al panel." };
+  }
+
   // Solo rutas internas del admin: un `next` controlado por el atacante podría
   // convertir el login en un redirect abierto hacia un dominio externo.
   const destination = next.startsWith("/admin") ? next : "/admin";

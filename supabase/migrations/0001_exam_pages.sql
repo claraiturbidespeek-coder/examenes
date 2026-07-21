@@ -63,31 +63,64 @@ create trigger exam_pages_set_updated_at
   before update on public.exam_pages
   for each row execute function public.set_updated_at();
 
+-- Quién es del equipo de S-Peak.
+--
+-- No basta con exigir "usuario autenticado": el registro público de Supabase Auth
+-- puede estar abierto, y la anon key viaja en el bundle del navegador. Sin esta
+-- tabla, cualquiera podría registrarse solo y quedar autorizado. Estar en
+-- auth.users da identidad; estar aquí da permiso.
+--
+-- Solo se escribe con service_role: no hay política que permita a un usuario
+-- añadirse a sí mismo.
+create table public.app_admins (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  email      text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.app_admins enable row level security;
+
+create policy "Los admins se ven a sí mismos"
+  on public.app_admins for select
+  to authenticated
+  using (user_id = auth.uid());
+
+create or replace function public.is_app_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (select 1 from public.app_admins where user_id = auth.uid());
+$$;
+
 -- RLS: sin política para `anon`.
 --
 -- La página pública lee desde el servidor con la service_role key (que salta RLS),
 -- así que no hace falta acceso anónimo. Dejarlo cerrado significa que la anon key
 -- expuesta en el navegador no puede enumerar los destination_url de todos los
 -- clientes. El admin escribe con su sesión, por lo que la propia base de datos
--- rechaza escrituras sin login — la protección no depende solo del middleware.
+-- rechaza escrituras de quien no esté en app_admins — la protección no depende
+-- solo del middleware.
 alter table public.exam_pages enable row level security;
 
-create policy "Usuarios autenticados leen las páginas"
+create policy "El equipo lee las páginas"
   on public.exam_pages for select
   to authenticated
-  using (true);
+  using (public.is_app_admin());
 
-create policy "Usuarios autenticados crean páginas"
+create policy "El equipo crea páginas"
   on public.exam_pages for insert
   to authenticated
-  with check (true);
+  with check (public.is_app_admin());
 
-create policy "Usuarios autenticados editan páginas"
+create policy "El equipo edita páginas"
   on public.exam_pages for update
   to authenticated
-  using (true) with check (true);
+  using (public.is_app_admin()) with check (public.is_app_admin());
 
-create policy "Usuarios autenticados borran páginas"
+create policy "El equipo borra páginas"
   on public.exam_pages for delete
   to authenticated
-  using (true);
+  using (public.is_app_admin());
