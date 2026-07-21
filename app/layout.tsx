@@ -34,7 +34,10 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-neutral-50 text-neutral-900">
+      {/* El aspecto se fija aquí, no en globals.css: fondo claro siempre, para
+          que el texto oscuro de las páginas tenga contraste pase lo que pase con
+          el tema del sistema. */}
+      <body className="min-h-full flex flex-col bg-neutral-50 font-sans text-neutral-900">
         {children}
       </body>
     </html>

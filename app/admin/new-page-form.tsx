@@ -41,7 +41,7 @@ function Field({
         className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-neutral-900"
       />
       {hint ? (
-        <p id={`${name}-hint`} className="mt-1 text-xs text-neutral-500">
+        <p id={`${name}-hint`} className="mt-1 text-xs text-neutral-600">
           {hint}
         </p>
       ) : null}
@@ -84,7 +84,7 @@ function LanguageField({
           </option>
         ))}
       </select>
-      <p id="language-hint" className="mt-1 text-xs text-neutral-500">
+      <p id="language-hint" className="mt-1 text-xs text-neutral-600">
         Se guarda como código corto y así aparece en la URL.
       </p>
       {errors?.length ? <p className="mt-1 text-xs text-red-700">{errors[0]}</p> : null}

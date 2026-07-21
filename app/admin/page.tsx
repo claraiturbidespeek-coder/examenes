@@ -19,7 +19,7 @@ export default async function AdminPage() {
     <main className="mx-auto w-full max-w-4xl flex-1 p-6 sm:p-10">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-500">
+          <p className="text-xs font-medium uppercase tracking-widest text-neutral-600">
             S-Peak
           </p>
           <h1 className="mt-2 text-2xl font-semibold text-neutral-900">
@@ -32,7 +32,7 @@ export default async function AdminPage() {
             type="submit"
             className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900"
           >
-            Salir
+            Cerrar sesión
           </button>
         </form>
       </header>
@@ -49,7 +49,7 @@ export default async function AdminPage() {
 
       <div className="mt-8 overflow-x-auto rounded-2xl border border-neutral-200 bg-white">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500">
+          <thead className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-600">
             <tr>
               <th className="px-4 py-3 font-medium">Cliente</th>
               <th className="px-4 py-3 font-medium">URL pública</th>
@@ -71,14 +71,14 @@ export default async function AdminPage() {
                       /{page.client_slug}/{page.language}
                     </a>
                   </td>
-                  <td className="max-w-xs truncate px-4 py-3 text-neutral-500">
+                  <td className="max-w-xs truncate px-4 py-3 text-neutral-600">
                     {page.destination_url}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-neutral-500">
+                <td colSpan={3} className="px-4 py-8 text-center text-neutral-600">
                   Todavía no hay ninguna página. Añade la primera.
                 </td>
               </tr>

@@ -6,7 +6,7 @@
 export default function Home() {
   return (
     <main className="flex flex-1 items-center justify-center p-6">
-      <p className="text-xs font-medium uppercase tracking-widest text-neutral-500">
+      <p className="text-xs font-medium uppercase tracking-widest text-neutral-600">
         S-Peak
       </p>
     </main>

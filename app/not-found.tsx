@@ -2,7 +2,7 @@ export default function NotFound() {
   return (
     <main className="flex flex-1 items-center justify-center p-6">
       <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-widest text-neutral-500">
+        <p className="text-xs font-medium uppercase tracking-widest text-neutral-600">
           S-Peak
         </p>
 
