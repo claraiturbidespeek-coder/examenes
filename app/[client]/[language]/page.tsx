@@ -10,8 +10,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // no hay razón para que cargue una tipografía que no muestra.
 const montserrat = Montserrat({ subsets: ["latin"], display: "swap" });
 
+// Navy es la superficie: manda en las tarjetas, que son los bloques grandes.
+// Rojo no aparece nunca como fondo de superficie ni como texto sobre navy (ahí
+// quedaría ilegible, ambos son oscuros): se reserva para el CTA y para los
+// acentos dentro del visor blanco del carrusel, donde sí destaca.
 const NAVY = "#1A3C4D";
-const RED = "#B51E40";
+
+// Sobre navy. Medido: 11.6:1 el blanco, 8.9:1 este gris claro.
+const ON_NAVY_SOFT = "#D5DFE4";
 
 // Sin caché: cuando el equipo añade o cambia una página en el admin, el enlace
 // que ya se repartió a los alumnos debe reflejarlo en la siguiente carga.
@@ -46,71 +52,90 @@ export default async function ExamAccessPage({ params }: PageProps) {
     LANGUAGES.find((l) => l.code === examPage.language)?.label ?? examPage.language;
 
   return (
-    // h-screen + overflow-hidden: la pantalla se resuelve sin scroll vertical,
-    // como en el wireframe. El reparto interno lo hace flexbox.
-    <div
-      className={`${montserrat.className} h-screen w-screen overflow-hidden p-8`}
-      style={{ background: "#ECEAE4" }}
-    >
-      <div className="flex h-full gap-6">
-        {/* ---------- Tarjeta izquierda: saludo y acceso ---------- */}
-        <section className="flex flex-[0_0_40%] flex-col gap-6 overflow-hidden border border-neutral-200 bg-white p-12">
+    <div className={`${montserrat.className} h-screen w-screen overflow-hidden bg-white`}>
+      {/* ---------------- Aviso en pantallas estrechas ----------------
+          Por debajo de 900px las dos tarjetas no caben sin romperse, y el examen
+          tampoco funciona en móvil (paso 4 de las instrucciones). Antes que
+          servir un amasijo ilegible, se dice lo único útil: usa un ordenador.
+          El corte es puramente CSS, así que no hay parpadeo al hidratar. */}
+      <div
+        className="flex h-full flex-col items-center justify-center gap-8 px-8 text-center min-[900px]:hidden"
+        style={{ background: NAVY }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- SVG de marca: no
+            hay nada que optimizar y next/image no procesa SVG local sin más. */}
+        <img src="/logo_white.svg" alt="S-Peak" className="w-44" />
+        <p className="max-w-xs text-lg font-semibold leading-snug text-white">
+          Este examen debe tomarse desde una computadora.
+        </p>
+        <p className="max-w-xs text-sm" style={{ color: ON_NAVY_SOFT }}>
+          Abre este mismo enlace en una computadora para empezar.
+        </p>
+      </div>
+
+      {/* ---------------- Pantalla completa ----------------
+          h-full + overflow-hidden: se resuelve sin scroll vertical, como en el
+          wireframe. El reparto interno lo hace flexbox. */}
+      <div className="hidden h-full gap-10 p-10 min-[900px]:flex">
+        {/* -------- Tarjeta izquierda: saludo y acceso -------- */}
+        <section
+          className="flex flex-[0_0_40%] flex-col gap-10 overflow-hidden p-14"
+          style={{ background: NAVY }}
+        >
           <div className="flex-none">
-            {/* Placeholder de logo — pendiente del asset real. */}
-            <div className="flex h-9 w-30 items-center justify-center border-2 border-dashed border-neutral-300 bg-neutral-50 text-[11px] uppercase tracking-[0.06em] text-neutral-600">
-              Logo
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- ver arriba */}
+            <img src="/logo_white.svg" alt="S-Peak" className="w-36" />
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col justify-center gap-4">
+          <div className="flex min-h-0 flex-1 flex-col justify-center gap-6">
             <p
-              className="text-xs font-semibold uppercase tracking-[0.08em]"
-              style={{ color: RED }}
+              className="text-xs font-semibold uppercase tracking-[0.12em]"
+              style={{ color: ON_NAVY_SOFT }}
             >
               Examen de ubicación
             </p>
 
-            <h1
-              className="text-[28px] font-semibold leading-[1.35]"
-              style={{ color: NAVY }}
-            >
+            <h1 className="text-[28px] font-semibold leading-[1.35] text-white">
               Bienvenido al programa de {languageLabel} de {examPage.client_name}
             </h1>
 
-            <p className="text-[15px] text-neutral-700">
+            <p className="text-[15px] leading-relaxed" style={{ color: ON_NAVY_SOFT }}>
               Este examen sitúa tu nivel actual para asignarte el grupo que te
               corresponde.
             </p>
 
-            {/* Placeholder de ilustración — pendiente del asset real. */}
-            <div className="flex min-h-0 flex-1 items-center justify-center border-2 border-dashed border-neutral-300 bg-neutral-50 text-[11px] uppercase tracking-[0.06em] text-neutral-600">
+            {/* Placeholder de ilustración: entre los assets recibidos no hay
+                ninguno equivalente, así que se queda a la espera. */}
+            <div className="flex min-h-0 flex-1 items-center justify-center border-2 border-dashed border-white/25 text-[11px] uppercase tracking-[0.06em] text-white/50">
               Ilustración
             </div>
 
-            <p className="text-[13px] leading-relaxed text-neutral-600">
+            <p className="text-[13px] leading-relaxed text-white/70">
               No es una prueba que se apruebe o se suspenda: sirve para conocer tu
               nivel real, así que respóndelo con naturalidad.
             </p>
           </div>
 
           <div className="flex-none">
-            {/* Enlace, no redirect: el alumno entra al examen cuando decide. */}
+            {/* Enlace, no redirect: el alumno entra al examen cuando decide.
+                Único uso del rojo como superficie en toda la página — es el
+                elemento que debe llamar la atención. */}
             <a
               href={examPage.destination_url}
-              className="inline-block px-9 py-4 text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ background: NAVY }}
+              className="inline-block cursor-pointer bg-[#B51E40] px-9 py-4 text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
             >
               Ir a mi examen →
             </a>
           </div>
         </section>
 
-        {/* ---------- Tarjeta derecha: instrucciones ---------- */}
-        <section className="flex flex-1 flex-col gap-6 overflow-hidden border border-neutral-200 bg-white p-12">
+        {/* -------- Tarjeta derecha: instrucciones -------- */}
+        <section
+          className="flex flex-1 flex-col gap-10 overflow-hidden p-14"
+          style={{ background: NAVY }}
+        >
           <div className="flex-none">
-            <h2 className="text-xl font-semibold" style={{ color: NAVY }}>
-              Antes de empezar
-            </h2>
+            <h2 className="text-xl font-semibold text-white">Antes de empezar</h2>
           </div>
 
           <InstructionsCarousel steps={INSTRUCTION_STEPS} />
