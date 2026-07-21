@@ -2,112 +2,52 @@
 
 import { useActionState, useState } from "react";
 
-import { createExamPage, type ActionState } from "@/app/admin/actions";
+import { createExamPages, type ExamPagesState } from "@/app/admin/actions";
 import { LANGUAGES } from "@/lib/languages";
+import { slugify } from "@/lib/slugify";
 
-function Field({
-  name,
-  label,
-  hint,
-  placeholder,
-  type = "text",
-  errors,
-  defaultValue,
-}: {
-  name: string;
-  label: string;
-  hint?: string;
-  placeholder?: string;
-  type?: string;
-  errors?: string[];
-  defaultValue?: string;
-}) {
-  return (
-    <div>
-      <label htmlFor={name} className="block text-sm font-medium text-neutral-700">
-        {label}
-      </label>
-      <input
-        id={name}
-        name={name}
-        type={type}
-        placeholder={placeholder}
-        // React vacía los campos al terminar la acción; sin esto, un duplicado
-        // obligaría a reescribir el formulario entero.
-        defaultValue={defaultValue ?? ""}
-        key={defaultValue ?? ""}
-        required
-        aria-describedby={hint ? `${name}-hint` : undefined}
-        className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-neutral-900"
-      />
-      {hint ? (
-        <p id={`${name}-hint`} className="mt-1 text-xs text-neutral-600">
-          {hint}
-        </p>
-      ) : null}
-      {errors?.length ? (
-        <p className="mt-1 text-xs text-red-700">{errors[0]}</p>
-      ) : null}
-    </div>
-  );
-}
+type Entry = {
+  /** Identidad estable de la fila: sobrevive a que se borren filas de en medio. */
+  id: number;
+  language: string;
+  destination_url: string;
+  old_wordpress_url: string;
+};
 
-function LanguageField({
-  errors,
-  defaultValue,
-}: {
-  errors?: string[];
-  defaultValue?: string;
-}) {
-  return (
-    <div>
-      <label htmlFor="language" className="block text-sm font-medium text-neutral-700">
-        Idioma
-      </label>
-      <select
-        id="language"
-        name="language"
-        defaultValue={defaultValue ?? ""}
-        key={defaultValue ?? ""}
-        required
-        aria-describedby="language-hint"
-        className="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-900"
-      >
-        {/* Sin idioma preseleccionado: obliga a elegir en vez de dejar que se
-            cuele el primero de la lista por descuido. */}
-        <option value="" disabled>
-          Selecciona un idioma…
-        </option>
-        {LANGUAGES.map((language) => (
-          <option key={language.code} value={language.code}>
-            {language.label}
-          </option>
-        ))}
-      </select>
-      <p id="language-hint" className="mt-1 text-xs text-neutral-600">
-        Se guarda como código corto y así aparece en la URL.
-      </p>
-      {errors?.length ? <p className="mt-1 text-xs text-red-700">{errors[0]}</p> : null}
-    </div>
-  );
-}
+const emptyEntry = (id: number): Entry => ({
+  id,
+  language: "",
+  destination_url: "",
+  old_wordpress_url: "",
+});
+
+const inputClass =
+  "mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-neutral-900";
+const labelClass = "block text-sm font-medium text-neutral-700";
 
 export function NewPageForm() {
   const [open, setOpen] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [legacyId, setLegacyId] = useState("");
+  const [entries, setEntries] = useState<Entry[]>([emptyEntry(0)]);
+  const [nextId, setNextId] = useState(1);
 
-  // Dos cosas aquí:
-  //
-  // El cierre se hace en la propia acción y no en un useEffect: cerrar es la
-  // consecuencia directa del guardado, no una sincronización con estado externo.
-  // Al desmontarse el formulario, los campos quedan limpios para la próxima vez.
-  //
-  // `isPending` sale de useActionState y no de useFormStatus: este último dejaba
-  // el botón en «Guardando…» y deshabilitado para siempre cuando la acción
-  // devolvía un error (por ejemplo un duplicado), obligando a recargar.
-  const [state, formAction, isPending] = useActionState<ActionState, FormData>(
+  const reset = () => {
+    setClientName("");
+    setLegacyId("");
+    setEntries([emptyEntry(0)]);
+    setNextId(1);
+  };
+
+  // El formulario es controlado, así que los datos viven en este estado y no en
+  // el DOM. Un error del servidor ya no puede borrar lo escrito: React vacía los
+  // campos no controlados al terminar la acción, pero estos se vuelven a pintar
+  // desde el estado.
+  const [state, formAction, isPending] = useActionState<ExamPagesState, FormData>(
     async (prevState, formData) => {
-      const result = await createExamPage(prevState, formData);
+      const result = await createExamPages(prevState, formData);
       if (result.success) {
+        reset();
         setOpen(false);
       }
       return result;
@@ -115,12 +55,29 @@ export function NewPageForm() {
     {},
   );
 
+  const slug = slugify(clientName);
+
+  const updateEntry = (id: number, patch: Partial<Entry>) =>
+    setEntries((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  const addEntry = () => {
+    setEntries((rows) => [...rows, emptyEntry(nextId)]);
+    setNextId((n) => n + 1);
+  };
+
+  const removeEntry = (id: number) =>
+    setEntries((rows) => (rows.length > 1 ? rows.filter((r) => r.id !== id) : rows));
+
+  // Idiomas ya elegidos en otras filas: se marcan como no seleccionables para
+  // que el duplicado no llegue siquiera a intentarse.
+  const chosen = new Set(entries.map((e) => e.language).filter(Boolean));
+
   if (!open) {
     return (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
+        className="cursor-pointer rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
       >
         Registrar nueva página
       </button>
@@ -129,38 +86,183 @@ export function NewPageForm() {
 
   return (
     <div className="w-full rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-      <h2 className="text-base font-semibold text-neutral-900">Nueva página de examen</h2>
+      <h2 className="text-base font-semibold text-neutral-900">
+        Registrar nueva página
+      </h2>
 
-      <form action={formAction} className="mt-5 space-y-4">
-        <Field
-          name="client_slug"
-          label="Identificador del cliente"
-          placeholder="cimesa"
-          hint="Aparece en la URL. Minúsculas, números y guiones."
-          errors={state.fieldErrors?.client_slug}
-          defaultValue={state.values?.client_slug}
+      <form action={formAction} className="mt-5 space-y-6">
+        {/* El estado completo viaja como un JSON: las filas son una lista de
+            longitud variable y serializarlas como campos sueltos obligaría a
+            reconstruir los índices en el servidor. */}
+        <input
+          type="hidden"
+          name="payload"
+          value={JSON.stringify({
+            client_name: clientName,
+            legacy_client_id: legacyId,
+            entries: entries.map(({ language, destination_url, old_wordpress_url }) => ({
+              language,
+              destination_url,
+              old_wordpress_url,
+            })),
+          })}
         />
-        <LanguageField
-          errors={state.fieldErrors?.language}
-          defaultValue={state.values?.language}
-        />
-        <Field
-          name="client_name"
-          label="Nombre visible"
-          placeholder="CIMESA"
-          hint="Es el nombre que ve el alumno en la página."
-          errors={state.fieldErrors?.client_name}
-          defaultValue={state.values?.client_name}
-        />
-        <Field
-          name="destination_url"
-          label="URL del examen"
-          type="url"
-          placeholder="https://…"
-          hint="Adonde lleva el botón «Ir a mi examen»."
-          errors={state.fieldErrors?.destination_url}
-          defaultValue={state.values?.destination_url}
-        />
+
+        {/* ---------- Datos del cliente ---------- */}
+        <fieldset className="space-y-4">
+          <legend className="text-xs font-semibold uppercase tracking-wide text-neutral-600">
+            Cliente
+          </legend>
+
+          <div>
+            <label htmlFor="client_name" className={labelClass}>
+              Nombre del cliente
+            </label>
+            <input
+              id="client_name"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              placeholder="CIMESA"
+              required
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-neutral-600">
+              {slug ? (
+                <>
+                  Las URLs serán{" "}
+                  <span className="font-mono text-neutral-900">/{slug}/…</span>
+                </>
+              ) : (
+                "La URL se genera a partir de este nombre."
+              )}
+            </p>
+            {state.clientErrors?.client_name ? (
+              <p className="mt-1 text-xs text-red-700">{state.clientErrors.client_name}</p>
+            ) : null}
+          </div>
+
+          <div>
+            <label htmlFor="legacy_client_id" className={labelClass}>
+              ID heredado <span className="font-normal text-neutral-600">(opcional)</span>
+            </label>
+            <input
+              id="legacy_client_id"
+              value={legacyId}
+              onChange={(e) => setLegacyId(e.target.value)}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-neutral-600">
+              Solo para trazar con el inventario de migración.
+            </p>
+          </div>
+        </fieldset>
+
+        {/* ---------- Idiomas ---------- */}
+        <fieldset className="space-y-4">
+          <legend className="text-xs font-semibold uppercase tracking-wide text-neutral-600">
+            Páginas por idioma
+          </legend>
+
+          {entries.map((entry, i) => (
+            <div key={entry.id} className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-neutral-600">Idioma {i + 1}</p>
+                {entries.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => removeEntry(entry.id)}
+                    className="cursor-pointer text-xs font-medium text-red-700 hover:underline"
+                  >
+                    Eliminar
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label htmlFor={`language-${entry.id}`} className={labelClass}>
+                    Idioma
+                  </label>
+                  <select
+                    id={`language-${entry.id}`}
+                    value={entry.language}
+                    onChange={(e) => updateEntry(entry.id, { language: e.target.value })}
+                    required
+                    className={`${inputClass} bg-white`}
+                  >
+                    <option value="" disabled>
+                      Selecciona un idioma…
+                    </option>
+                    {LANGUAGES.map((language) => (
+                      <option
+                        key={language.code}
+                        value={language.code}
+                        // Ya elegido en otra fila. Sigue visible para que se
+                        // entienda por qué no está disponible.
+                        disabled={
+                          chosen.has(language.code) && entry.language !== language.code
+                        }
+                      >
+                        {language.label}
+                      </option>
+                    ))}
+                  </select>
+                  {state.entryErrors?.[i]?.language ? (
+                    <p className="mt-1 text-xs text-red-700">
+                      {state.entryErrors[i].language}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label htmlFor={`destination_url-${entry.id}`} className={labelClass}>
+                    URL del examen
+                  </label>
+                  <input
+                    id={`destination_url-${entry.id}`}
+                    type="url"
+                    value={entry.destination_url}
+                    onChange={(e) =>
+                      updateEntry(entry.id, { destination_url: e.target.value })
+                    }
+                    placeholder="https://…"
+                    required
+                    className={inputClass}
+                  />
+                  {state.entryErrors?.[i]?.destination_url ? (
+                    <p className="mt-1 text-xs text-red-700">
+                      {state.entryErrors[i].destination_url}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label htmlFor={`old_wordpress_url-${entry.id}`} className={labelClass}>
+                    URL antigua en WordPress{" "}
+                    <span className="font-normal text-neutral-600">(opcional)</span>
+                  </label>
+                  <input
+                    id={`old_wordpress_url-${entry.id}`}
+                    value={entry.old_wordpress_url}
+                    onChange={(e) =>
+                      updateEntry(entry.id, { old_wordpress_url: e.target.value })
+                    }
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={addEntry}
+            disabled={chosen.size >= LANGUAGES.length && entries.length >= LANGUAGES.length}
+            className="cursor-pointer rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:cursor-default disabled:opacity-50"
+          >
+            + Agregar idioma
+          </button>
+        </fieldset>
 
         {state.error ? (
           <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -168,18 +270,20 @@ export function NewPageForm() {
           </p>
         ) : null}
 
-        <div className="flex items-center gap-3 pt-1">
+        <div className="flex items-center gap-3">
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700 disabled:opacity-60"
+            className="cursor-pointer rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700 disabled:cursor-default disabled:opacity-60"
           >
-            {isPending ? "Guardando…" : "Guardar página"}
+            {isPending
+              ? "Guardando…"
+              : `Guardar ${entries.length} ${entries.length === 1 ? "página" : "páginas"}`}
           </button>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="rounded-xl px-4 py-2.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
+            className="cursor-pointer rounded-xl px-4 py-2.5 text-sm font-medium text-neutral-600 hover:text-neutral-900"
           >
             Cancelar
           </button>
