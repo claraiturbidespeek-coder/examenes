@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { LANGUAGE_CODES } from "@/lib/languages";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type ActionState = {
@@ -36,12 +37,11 @@ const examPageSchema = z.object({
     .refine((slug) => !RESERVED_SLUGS.includes(slug), {
       message: "Ese identificador está reservado por la aplicación.",
     }),
-  language: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, "Indica el idioma.")
-    .regex(SLUG, "Solo minúsculas, números y guiones (ej. es)."),
+  // El formulario ya solo ofrece estos seis, pero la acción es un endpoint
+  // público: se valida igual contra la lista, no contra un formato genérico.
+  language: z.enum(LANGUAGE_CODES, {
+    message: "Selecciona uno de los idiomas disponibles.",
+  }),
   client_name: z.string().trim().min(1, "Indica el nombre visible del cliente."),
   destination_url: z
     .string()
