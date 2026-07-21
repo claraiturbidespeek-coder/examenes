@@ -122,7 +122,7 @@ export function NewPageForm() {
         onClick={() => setOpen(true)}
         className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700"
       >
-        Añadir página
+        Registrar nueva página
       </button>
     );
   }
