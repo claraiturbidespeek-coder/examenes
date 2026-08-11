@@ -143,7 +143,7 @@ export function NewPageForm() {
 
           <div>
             <label htmlFor="legacy_client_id" className={labelClass}>
-              ID heredado <span className="font-normal text-neutral-600">(opcional)</span>
+              ID Cliente (MS) <span className="font-normal text-neutral-600">(opcional)</span>
             </label>
             <input
               id="legacy_client_id"
