@@ -11,14 +11,12 @@ type Entry = {
   id: number;
   language: string;
   destination_url: string;
-  old_wordpress_url: string;
 };
 
 const emptyEntry = (id: number): Entry => ({
   id,
   language: "",
   destination_url: "",
-  old_wordpress_url: "",
 });
 
 const inputClass =
@@ -100,10 +98,9 @@ export function NewPageForm() {
           value={JSON.stringify({
             client_name: clientName,
             legacy_client_id: legacyId,
-            entries: entries.map(({ language, destination_url, old_wordpress_url }) => ({
+            entries: entries.map(({ language, destination_url }) => ({
               language,
               destination_url,
-              old_wordpress_url,
             })),
           })}
         />
@@ -234,21 +231,6 @@ export function NewPageForm() {
                       {state.entryErrors[i].destination_url}
                     </p>
                   ) : null}
-                </div>
-
-                <div>
-                  <label htmlFor={`old_wordpress_url-${entry.id}`} className={labelClass}>
-                    URL antigua en WordPress{" "}
-                    <span className="font-normal text-neutral-600">(opcional)</span>
-                  </label>
-                  <input
-                    id={`old_wordpress_url-${entry.id}`}
-                    value={entry.old_wordpress_url}
-                    onChange={(e) =>
-                      updateEntry(entry.id, { old_wordpress_url: e.target.value })
-                    }
-                    className={inputClass}
-                  />
                 </div>
               </div>
             </div>

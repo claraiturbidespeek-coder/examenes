@@ -84,7 +84,9 @@ const entrySchema = z.object({
     .refine((url) => /^https?:\/\//i.test(url), {
       message: "La URL debe empezar por http:// o https://",
     }),
-  old_wordpress_url: z.string().trim(),
+  // El formulario ya no lo pide, pero la columna sigue viva para el inventario
+  // histórico y los redirects 301: se acepta si alguien lo envía.
+  old_wordpress_url: z.string().trim().optional(),
 });
 
 const payloadSchema = z.object({
