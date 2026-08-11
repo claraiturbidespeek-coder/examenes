@@ -7,12 +7,25 @@ import { languageLabel } from "@/lib/languages";
 
 /**
  * Un cliente en la tabla del panel: la cabecera con su nombre y el botón de
- * editar, y debajo una fila por idioma. Es un componente de cliente porque el
- * formulario de edición se abre y se cierra aquí; la tabla en sí se sigue
- * pintando en el servidor.
+ * editar, y debajo una fila por idioma.
+ *
+ * `languageFilter` solo recorta lo que se enseña en la tabla. El formulario de
+ * edición recibe el cliente entero a propósito: editar viendo media lista
+ * llevaría a «añadir» un idioma que en realidad ya existe y pisarle el destino
+ * sin avisar.
  */
-export function ClientRows({ client }: { client: AdminClient }) {
+export function ClientRows({
+  client,
+  languageFilter,
+}: {
+  client: AdminClient;
+  languageFilter?: string;
+}) {
   const [editing, setEditing] = useState(false);
+
+  const visiblePages = languageFilter
+    ? client.pages.filter((page) => page.language === languageFilter)
+    : client.pages;
 
   return (
     <tbody className="divide-y divide-neutral-100 border-b border-neutral-200 last:border-b-0">
@@ -40,7 +53,7 @@ export function ClientRows({ client }: { client: AdminClient }) {
           </td>
         </tr>
       ) : (
-        client.pages.map((page) => (
+        visiblePages.map((page) => (
           <tr key={page.id}>
             <td className="px-4 py-3 text-neutral-700">{languageLabel(page.language)}</td>
             <td className="px-4 py-3">

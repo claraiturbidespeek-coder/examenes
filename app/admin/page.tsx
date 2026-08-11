@@ -1,5 +1,5 @@
 import { signOut } from "@/app/admin/actions";
-import { ClientRows } from "@/app/admin/client-rows";
+import { ClientsTable } from "@/app/admin/clients-table";
 import type { AdminClient } from "@/app/admin/edit-client-form";
 import { NewPageForm } from "@/app/admin/new-page-form";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -70,30 +70,8 @@ export default async function AdminPage() {
         </p>
       ) : null}
 
-      <div className="mt-8 overflow-x-auto rounded-2xl border border-neutral-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-600">
-            <tr>
-              <th className="px-4 py-3 font-medium">Idioma</th>
-              <th className="px-4 py-3 font-medium">URL pública</th>
-              <th className="px-4 py-3 font-medium">Destino</th>
-            </tr>
-          </thead>
-
-          {clients.size > 0 ? (
-            [...clients.values()].map((client) => (
-              <ClientRows key={client.client_slug} client={client} />
-            ))
-          ) : (
-            <tbody>
-              <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-neutral-600">
-                  Todavía no hay ninguna página. Añade la primera.
-                </td>
-              </tr>
-            </tbody>
-          )}
-        </table>
+      <div className="mt-8">
+        <ClientsTable clients={[...clients.values()]} />
       </div>
     </main>
   );
