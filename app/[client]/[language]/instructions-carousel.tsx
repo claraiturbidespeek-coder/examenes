@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 import type { InstructionStep } from "@/lib/exam-instructions";
@@ -43,12 +44,22 @@ export function InstructionsCarousel({ steps }: { steps: InstructionStep[] }) {
               aria-hidden={i !== index}
               inert={i !== index}
             >
-              {/* Placeholder de icono — pendiente del asset real. */}
-              <div
-                className="flex h-22 w-22 flex-[0_0_5.5rem] items-center justify-center border-2 border-dashed border-neutral-300 text-xs font-semibold"
-                style={{ color: NAVY }}
-              >
-                {i + 1}
+              {/* La ilustración se escala a lo que quepa: object-contain más
+                  max-h-full la mete entera dentro del visor sin recortarla ni
+                  deformarla, así que por baja que sea la ventana no puede
+                  empujar la tarjeta ni sacar scroll. */}
+              <div className="flex h-full flex-[0_0_38%] items-center justify-center">
+                <Image
+                  src={step.image}
+                  alt=""
+                  // Las cuatro están en el DOM a la vez y las que no se ven
+                  // quedan fuera del recorte del visor. Con carga diferida el
+                  // navegador no las pediría hasta que entrasen, y se verían
+                  // aparecer a media transición: se cargan todas por delante.
+                  priority={i === 0}
+                  loading="eager"
+                  className="max-h-full w-full object-contain"
+                />
               </div>
 
               <div className="min-w-0 flex-1">
