@@ -14,7 +14,8 @@ export type Database = {
           client_slug: string;
           language: string;
           client_name: string;
-          destination_url: string;
+          /** Null salvo excepción: el link se construye. Ver lib/exam-link.ts. */
+          destination_url: string | null;
           legacy_client_id: string | null;
           old_wordpress_url: string | null;
           created_at: string;
@@ -25,7 +26,7 @@ export type Database = {
           client_slug: string;
           language: string;
           client_name: string;
-          destination_url: string;
+          destination_url?: string | null;
           legacy_client_id?: string | null;
           old_wordpress_url?: string | null;
           created_at?: string;
@@ -40,6 +41,25 @@ export type Database = {
           legacy_client_id?: string | null;
           old_wordpress_url?: string | null;
           created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      language_nodes: {
+        Row: {
+          language: string;
+          /** Null = todavía no se sabe. El panel bloquea el alta en ese idioma. */
+          node: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          language: string;
+          node?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          language?: string;
+          node?: string | null;
           updated_at?: string;
         };
         Relationships: [];

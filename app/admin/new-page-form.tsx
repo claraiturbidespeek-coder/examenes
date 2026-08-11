@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { createExamPages, type ExamPagesState } from "@/app/admin/actions";
+import { buildExamLink, type LanguageNodes } from "@/lib/exam-link";
 import { LANGUAGES } from "@/lib/languages";
 import { slugify } from "@/lib/slugify";
 
@@ -10,20 +11,18 @@ type Entry = {
   /** Identidad estable de la fila: sobrevive a que se borren filas de en medio. */
   id: number;
   language: string;
-  destination_url: string;
 };
 
 const emptyEntry = (id: number): Entry => ({
   id,
   language: "",
-  destination_url: "",
 });
 
 const inputClass =
   "mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-neutral-900";
 const labelClass = "block text-sm font-medium text-neutral-700";
 
-export function NewPageForm() {
+export function NewPageForm({ nodes }: { nodes: LanguageNodes }) {
   const [open, setOpen] = useState(false);
   const [clientName, setClientName] = useState("");
   const [legacyId, setLegacyId] = useState("");
@@ -70,6 +69,14 @@ export function NewPageForm() {
   // que el duplicado no llegue siquiera a intentarse.
   const chosen = new Set(entries.map((e) => e.language).filter(Boolean));
 
+  /** El link tal y como quedará, en cuanto haya ID de cliente e idioma con node. */
+  const linkPreview = (language: string) => {
+    const node = language ? nodes[language] : null;
+    return legacyId.trim() && node
+      ? buildExamLink({ clientId: legacyId.trim(), node })
+      : null;
+  };
+
   if (!open) {
     return (
       <button
@@ -98,10 +105,7 @@ export function NewPageForm() {
           value={JSON.stringify({
             client_name: clientName,
             legacy_client_id: legacyId,
-            entries: entries.map(({ language, destination_url }) => ({
-              language,
-              destination_url,
-            })),
+            entries: entries.map(({ language }) => ({ language })),
           })}
         />
 
@@ -140,17 +144,24 @@ export function NewPageForm() {
 
           <div>
             <label htmlFor="legacy_client_id" className={labelClass}>
-              ID Cliente (MS) <span className="font-normal text-neutral-600">(opcional)</span>
+              ID Cliente (MS)
             </label>
             <input
               id="legacy_client_id"
               value={legacyId}
               onChange={(e) => setLegacyId(e.target.value)}
+              required
               className={inputClass}
             />
             <p className="mt-1 text-xs text-neutral-600">
-              Solo para trazar con el inventario de migración.
+              El link del examen se construye con este ID y el idioma. Ya no se
+              escribe a mano.
             </p>
+            {state.clientErrors?.legacy_client_id ? (
+              <p className="mt-1 text-xs text-red-700">
+                {state.clientErrors.legacy_client_id}
+              </p>
+            ) : null}
           </div>
         </fieldset>
 
@@ -190,19 +201,26 @@ export function NewPageForm() {
                     <option value="" disabled>
                       Selecciona un idioma…
                     </option>
-                    {LANGUAGES.map((language) => (
-                      <option
-                        key={language.code}
-                        value={language.code}
-                        // Ya elegido en otra fila. Sigue visible para que se
-                        // entienda por qué no está disponible.
-                        disabled={
-                          chosen.has(language.code) && entry.language !== language.code
-                        }
-                      >
-                        {language.label}
-                      </option>
-                    ))}
+                    {LANGUAGES.map((language) => {
+                      const withoutNode = !nodes[language.code];
+                      return (
+                        <option
+                          key={language.code}
+                          value={language.code}
+                          // Deshabilitado por dos motivos distintos: ya está
+                          // elegido en otra fila, o todavía no tiene node y su
+                          // link no se podría construir. En los dos casos sigue
+                          // visible para que se entienda por qué no se puede.
+                          disabled={
+                            withoutNode ||
+                            (chosen.has(language.code) && entry.language !== language.code)
+                          }
+                        >
+                          {language.label}
+                          {withoutNode ? " — sin node configurado" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                   {state.entryErrors?.[i]?.language ? (
                     <p className="mt-1 text-xs text-red-700">
@@ -211,26 +229,18 @@ export function NewPageForm() {
                   ) : null}
                 </div>
 
+                {/* El link ya no se escribe, pero sí se enseña: es lo que va a
+                    recibir el alumno y no debería quedar invisible hasta después
+                    de guardar. */}
                 <div>
-                  <label htmlFor={`destination_url-${entry.id}`} className={labelClass}>
-                    URL del examen
-                  </label>
-                  <input
-                    id={`destination_url-${entry.id}`}
-                    type="url"
-                    value={entry.destination_url}
-                    onChange={(e) =>
-                      updateEntry(entry.id, { destination_url: e.target.value })
-                    }
-                    placeholder="https://…"
-                    required
-                    className={inputClass}
-                  />
-                  {state.entryErrors?.[i]?.destination_url ? (
-                    <p className="mt-1 text-xs text-red-700">
-                      {state.entryErrors[i].destination_url}
-                    </p>
-                  ) : null}
+                  <p className={labelClass}>Link del examen</p>
+                  <p className="mt-1.5 overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-2.5 font-mono text-xs whitespace-nowrap text-neutral-700">
+                    {linkPreview(entry.language) ?? (
+                      <span className="font-sans text-neutral-500">
+                        Se construye al elegir idioma y escribir el ID de cliente.
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
             </div>

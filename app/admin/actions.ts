@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { LANGUAGE_CODES } from "@/lib/languages";
+import { LANGUAGE_CODES, languageLabel } from "@/lib/languages";
 import { slugify } from "@/lib/slugify";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -76,18 +76,9 @@ const languageSchema = z.enum(LANGUAGE_CODES, {
   message: "Selecciona uno de los idiomas disponibles.",
 });
 
-const destinationUrlSchema = z
-  .string()
-  .trim()
-  .url("Debe ser una URL completa, incluyendo https://")
-  .refine((url) => /^https?:\/\//i.test(url), {
-    message: "La URL debe empezar por http:// o https://",
-  });
-
 /** Una fila del formulario: un idioma del cliente. */
 const entrySchema = z.object({
   language: languageSchema,
-  destination_url: destinationUrlSchema,
   // El formulario ya no lo pide, pero la columna sigue viva para el inventario
   // histórico y los redirects 301: se acepta si alguien lo envía.
   old_wordpress_url: z.string().trim().optional(),
@@ -95,7 +86,12 @@ const entrySchema = z.object({
 
 const payloadSchema = z.object({
   client_name: z.string().trim().min(1, "Indica el nombre del cliente."),
-  legacy_client_id: z.string().trim(),
+  // Dejó de ser opcional: es la mitad del link que se construye, así que sin él
+  // la página que se cree no lleva a ninguna parte.
+  legacy_client_id: z
+    .string()
+    .trim()
+    .min(1, "Indica el ID de cliente: el link del examen se construye con él."),
   entries: z.array(entrySchema).min(1, "Añade al menos un idioma."),
 });
 
@@ -129,6 +125,47 @@ function collectIssues(error: z.ZodError) {
   }
 
   return { clientErrors, entryErrors };
+}
+
+type SupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
+
+/** El mismo texto en el alta y en la edición: el motivo es el mismo. */
+function languageWithoutNodeMessage(language: string) {
+  return `${languageLabel(language)} todavía no tiene node configurado, así que no se puede construir su link. Registra el node en language_nodes y vuelve a intentarlo.`;
+}
+
+/**
+ * Cuáles de estos idiomas no tienen node en language_nodes.
+ *
+ * Sin node no hay link que construir. El formulario ya los ofrece deshabilitados,
+ * pero se comprueba también aquí: la acción es un endpoint público, y además el
+ * node puede haberse quedado sin poner entre que se pintó el formulario y se
+ * envió. Antes crear una página imposible que dejar que un alumno se encuentre
+ * con un enlace roto.
+ */
+async function findLanguagesWithoutNode(
+  supabase: SupabaseClient,
+  languages: string[],
+): Promise<{ error?: string; missing: string[] }> {
+  const { data, error } = await supabase
+    .from("language_nodes")
+    .select("language, node")
+    .in("language", languages);
+
+  if (error) {
+    return {
+      error: `No se pudieron leer los nodes de idioma: ${error.message}`,
+      missing: [],
+    };
+  }
+
+  const withNode = new Set(
+    (data ?? []).filter((row) => row.node).map((row) => row.language),
+  );
+
+  // Un idioma sin fila en language_nodes cuenta igual que uno con node vacío:
+  // tampoco hay con qué construir el link.
+  return { missing: languages.filter((language) => !withNode.has(language)) };
 }
 
 /**
@@ -218,6 +255,28 @@ export async function createExamPages(
     return { error: "Hay idiomas repetidos en el formulario.", entryErrors };
   }
 
+  const nodes = await findLanguagesWithoutNode(
+    supabase,
+    entries.map((entry) => entry.language),
+  );
+
+  if (nodes.error) {
+    return { error: nodes.error };
+  }
+
+  if (nodes.missing.length > 0) {
+    const missing = new Set(nodes.missing);
+    for (const [i, entry] of entries.entries()) {
+      if (missing.has(entry.language)) {
+        entryErrors[i] = { language: languageWithoutNodeMessage(entry.language) };
+      }
+    }
+    return {
+      error: "Hay un idioma sin node configurado. No se ha creado ninguna página.",
+      entryErrors,
+    };
+  }
+
   // Qué choca con lo que ya hay en la base de datos. Se consulta antes de
   // insertar para poder decir exactamente qué fila falla: el error 23505 del
   // insert masivo no dice cuál de todas lo provocó.
@@ -249,13 +308,15 @@ export async function createExamPages(
     };
   }
 
+  // Sin destination_url a propósito: el link se construye al servir la página.
+  // Guardarlo aquí congelaría el node del día del alta, y entonces corregir un
+  // node en language_nodes no arreglaría las páginas ya creadas.
   const { error } = await supabase.from("exam_pages").insert(
     entries.map((entry) => ({
       client_slug,
       client_name,
       language: entry.language,
-      destination_url: entry.destination_url,
-      legacy_client_id: legacy_client_id || null,
+      legacy_client_id,
       old_wordpress_url: entry.old_wordpress_url || null,
     })),
   );
@@ -291,12 +352,7 @@ const updatePayloadSchema = z.object({
   client_name: z.string().trim().min(1, "Indica el nombre del cliente."),
   legacy_client_id: z.string().trim(),
   entries: z
-    .array(
-      z.object({
-        language: languageSchema,
-        destination_url: destinationUrlSchema,
-      }),
-    )
+    .array(z.object({ language: languageSchema }))
     .min(1, "El cliente tiene que conservar al menos un idioma."),
   /** Filas que el formulario marcó para borrar, ya confirmadas por el usuario. */
   removed_ids: z.array(z.uuid()),
@@ -361,7 +417,7 @@ export async function updateClient(
   // en vez de avisar.
   const { data: current, error: currentError } = await supabase
     .from("exam_pages")
-    .select("id, language")
+    .select("id, language, destination_url")
     .eq("client_slug", client_slug);
 
   if (currentError) {
@@ -370,6 +426,46 @@ export async function updateClient(
 
   if (!current || current.length === 0) {
     return { error: "Este cliente ya no existe. Recarga el panel." };
+  }
+
+  // Los idiomas cuyo link hay que construir: los que no traen uno explícito
+  // heredado del inventario. Un idioma nuevo nunca lo trae, así que siempre
+  // entra aquí. Solo estos necesitan node y ID de cliente; una fila que ya tiene
+  // su link propio funciona sin ninguna de las dos cosas.
+  const explicitLinks = new Set(
+    current.filter((row) => row.destination_url).map((row) => row.language),
+  );
+  const needBuilding = entries
+    .map((entry) => entry.language)
+    .filter((language) => !explicitLinks.has(language));
+
+  if (needBuilding.length > 0 && !legacy_client_id) {
+    return {
+      error: "Revisa los campos marcados.",
+      clientErrors: {
+        legacy_client_id:
+          "Hace falta el ID de cliente: el link de estos idiomas se construye con él.",
+      },
+    };
+  }
+
+  const nodes = await findLanguagesWithoutNode(supabase, needBuilding);
+
+  if (nodes.error) {
+    return { error: nodes.error };
+  }
+
+  if (nodes.missing.length > 0) {
+    const missing = new Set(nodes.missing);
+    for (const [i, entry] of entries.entries()) {
+      if (missing.has(entry.language)) {
+        entryErrors[i] = { language: languageWithoutNodeMessage(entry.language) };
+      }
+    }
+    return {
+      error: "Hay un idioma sin node configurado. No se ha guardado nada.",
+      entryErrors,
+    };
   }
 
   // Nombre e ID de cliente están repetidos en cada fila del cliente. Se
@@ -384,16 +480,20 @@ export async function updateClient(
     return { error: `No se pudo guardar el cliente: ${clientError.message}` };
   }
 
-  // Un solo upsert cubre los dos casos: el idioma que ya existía recibe su nuevo
-  // destino y el que no existía se crea. El conflicto se resuelve por
+  // Un solo upsert cubre los dos casos: el idioma que ya existía se queda como
+  // está y el que no existía se crea. El conflicto se resuelve por
   // (client_slug, language), así que no hace falta que el navegador mande ids —
   // y no hay envío posible que toque las filas de otro cliente.
+  //
+  // destination_url no viaja en el upsert, y eso es deliberado por partida doble:
+  // las filas nuevas nacen sin link explícito (se construye al servirlas) y las
+  // que ya tenían el suyo del inventario lo conservan, porque el ON CONFLICT solo
+  // escribe las columnas que van en el envío.
   const { error: upsertError } = await supabase.from("exam_pages").upsert(
     entries.map((entry) => ({
       client_slug,
       client_name,
       language: entry.language,
-      destination_url: entry.destination_url,
       legacy_client_id: legacy_client_id || null,
     })),
     { onConflict: "client_slug,language" },

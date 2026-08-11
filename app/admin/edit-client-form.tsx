@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { updateClient, type UpdateClientState } from "@/app/admin/actions";
+import { buildExamLink, type LanguageNodes } from "@/lib/exam-link";
 import { LANGUAGES, languageLabel } from "@/lib/languages";
 
 /** Un cliente tal y como lo agrupa el panel: sus datos más sus idiomas. */
@@ -10,7 +11,12 @@ export type AdminClient = {
   client_slug: string;
   client_name: string;
   legacy_client_id: string;
-  pages: { id: string; language: string; destination_url: string }[];
+  pages: {
+    id: string;
+    language: string;
+    /** Link propio de la fila. Casi siempre null: lo normal es construirlo. */
+    destination_url: string | null;
+  }[];
 };
 
 type Row = {
@@ -19,7 +25,8 @@ type Row = {
   /** id de la fila en la base de datos; null si es un idioma que todavía no existe. */
   id: string | null;
   language: string;
-  destination_url: string;
+  /** Link explícito heredado, si la fila lo trae. No se edita desde aquí. */
+  destinationUrl: string | null;
 };
 
 const inputClass =
@@ -28,9 +35,11 @@ const labelClass = "block text-sm font-medium text-neutral-700";
 
 export function EditClientForm({
   client,
+  nodes,
   onClose,
 }: {
   client: AdminClient;
+  nodes: LanguageNodes;
   onClose: () => void;
 }) {
   const [clientName, setClientName] = useState(client.client_name);
@@ -40,7 +49,7 @@ export function EditClientForm({
       key: i,
       id: page.id,
       language: page.language,
-      destination_url: page.destination_url,
+      destinationUrl: page.destination_url,
     })),
   );
   const [nextKey, setNextKey] = useState(client.pages.length);
@@ -69,7 +78,10 @@ export function EditClientForm({
     setRows((current) => current.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
   const addRow = () => {
-    setRows((current) => [...current, { key: nextKey, id: null, language: "", destination_url: "" }]);
+    setRows((current) => [
+      ...current,
+      { key: nextKey, id: null, language: "", destinationUrl: null },
+    ]);
     setNextKey((n) => n + 1);
   };
 
@@ -93,6 +105,22 @@ export function EditClientForm({
   // últimos está «Deshacer», que además conserva su destino.
   const taken = new Set([...rows, ...removed].map((r) => r.language).filter(Boolean));
 
+  // El ID de cliente solo hace falta si algún idioma necesita link construido.
+  // Un cliente que venga entero del inventario, con su link propio en cada fila,
+  // puede editarse sin inventarse un ID que no tiene.
+  const needsClientId = rows.some((row) => !row.destinationUrl);
+
+  /** Lo que se va a servir en esa fila, y de dónde sale. */
+  const resolvedLink = (row: Row) => {
+    if (row.destinationUrl) {
+      return { url: row.destinationUrl, explicit: true };
+    }
+    const node = row.language ? nodes[row.language] : null;
+    return legacyId.trim() && node
+      ? { url: buildExamLink({ clientId: legacyId.trim(), node }), explicit: false }
+      : { url: null, explicit: false };
+  };
+
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-6">
       <h3 className="text-base font-semibold text-neutral-900">
@@ -107,10 +135,7 @@ export function EditClientForm({
             client_slug: client.client_slug,
             client_name: clientName,
             legacy_client_id: legacyId,
-            entries: rows.map(({ language, destination_url }) => ({
-              language,
-              destination_url,
-            })),
+            entries: rows.map(({ language }) => ({ language })),
             removed_ids: removed.map((r) => r.id).filter(Boolean),
           })}
         />
@@ -150,14 +175,28 @@ export function EditClientForm({
 
           <div>
             <label htmlFor={`edit_legacy_client_id-${client.client_slug}`} className={labelClass}>
-              ID Cliente (MS) <span className="font-normal text-neutral-600">(opcional)</span>
+              ID Cliente (MS){" "}
+              {needsClientId ? null : (
+                <span className="font-normal text-neutral-600">(opcional)</span>
+              )}
             </label>
             <input
               id={`edit_legacy_client_id-${client.client_slug}`}
               value={legacyId}
               onChange={(e) => setLegacyId(e.target.value)}
+              required={needsClientId}
               className={inputClass}
             />
+            <p className="mt-1 text-xs text-neutral-600">
+              {needsClientId
+                ? "El link de los idiomas que no traen uno propio se construye con este ID."
+                : "Todos los idiomas de este cliente traen su link propio, así que aquí no hace falta."}
+            </p>
+            {state.clientErrors?.legacy_client_id ? (
+              <p className="mt-1 text-xs text-red-700">
+                {state.clientErrors.legacy_client_id}
+              </p>
+            ) : null}
           </div>
         </fieldset>
 
@@ -226,15 +265,24 @@ export function EditClientForm({
                       <option value="" disabled>
                         Selecciona un idioma…
                       </option>
-                      {LANGUAGES.map((language) => (
-                        <option
-                          key={language.code}
-                          value={language.code}
-                          disabled={taken.has(language.code) && row.language !== language.code}
-                        >
-                          {language.label}
-                        </option>
-                      ))}
+                      {LANGUAGES.map((language) => {
+                        const withoutNode = !nodes[language.code];
+                        return (
+                          <option
+                            key={language.code}
+                            value={language.code}
+                            // Sin node no hay link que construir para un idioma
+                            // nuevo, así que no se puede añadir todavía.
+                            disabled={
+                              withoutNode ||
+                              (taken.has(language.code) && row.language !== language.code)
+                            }
+                          >
+                            {language.label}
+                            {withoutNode ? " — sin node configurado" : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   )}
                   {state.entryErrors?.[i]?.language ? (
@@ -242,24 +290,24 @@ export function EditClientForm({
                   ) : null}
                 </div>
 
+                {/* El link no se edita: o se construye con el ID de cliente y el
+                    node del idioma, o la fila trae el suyo propio del inventario.
+                    Un campo editable aquí sería una tercera versión compitiendo
+                    con esas dos. */}
                 <div>
-                  <label htmlFor={`edit_destination_url-${row.key}`} className={labelClass}>
-                    URL del examen
-                  </label>
-                  <input
-                    id={`edit_destination_url-${row.key}`}
-                    type="url"
-                    value={row.destination_url}
-                    onChange={(e) => updateRow(row.key, { destination_url: e.target.value })}
-                    placeholder="https://…"
-                    required
-                    className={inputClass}
-                  />
-                  {state.entryErrors?.[i]?.destination_url ? (
-                    <p className="mt-1 text-xs text-red-700">
-                      {state.entryErrors[i].destination_url}
-                    </p>
-                  ) : null}
+                  <p className={labelClass}>Link del examen</p>
+                  <p className="mt-1.5 overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-2.5 font-mono text-xs whitespace-nowrap text-neutral-700">
+                    {resolvedLink(row).url ?? (
+                      <span className="font-sans text-neutral-500">
+                        Se construye al elegir idioma y escribir el ID de cliente.
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-600">
+                    {resolvedLink(row).explicit
+                      ? "Link propio de esta fila, heredado del inventario. Manda sobre el construido y se conserva al guardar."
+                      : "Se construye con el ID de cliente y el node del idioma."}
+                  </p>
                 </div>
               </div>
 

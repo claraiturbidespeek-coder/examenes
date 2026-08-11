@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { InstructionsCarousel } from "@/app/[client]/[language]/instructions-carousel";
 import { INSTRUCTION_STEPS } from "@/lib/exam-instructions";
+import { resolveExamLink } from "@/lib/exam-link";
 import { LANGUAGES } from "@/lib/languages";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -31,12 +32,26 @@ export default async function ExamAccessPage({ params }: PageProps) {
   const { client, language } = await params;
 
   const supabase = createAdminClient();
-  const { data: examPage, error } = await supabase
-    .from("exam_pages")
-    .select("client_name, destination_url, language")
-    .eq("client_slug", client.toLowerCase())
-    .eq("language", language.toLowerCase())
-    .maybeSingle();
+  const slug = client.toLowerCase();
+  const languageCode = language.toLowerCase();
+
+  // El node hace falta casi siempre, y esperar a saber si la fila trae link
+  // propio para pedirlo encadenaría dos viajes a Supabase en la ruta que ve el
+  // alumno. Se piden a la vez y a veces sobra el segundo.
+  const [{ data: examPage, error }, { data: languageNode, error: nodeError }] =
+    await Promise.all([
+      supabase
+        .from("exam_pages")
+        .select("client_name, destination_url, language, legacy_client_id")
+        .eq("client_slug", slug)
+        .eq("language", languageCode)
+        .maybeSingle(),
+      supabase
+        .from("language_nodes")
+        .select("node")
+        .eq("language", languageCode)
+        .maybeSingle(),
+    ]);
 
   if (error) {
     // Un fallo de base de datos no es una página inexistente. Se distingue para
@@ -44,8 +59,29 @@ export default async function ExamAccessPage({ params }: PageProps) {
     throw new Error(`No se pudo consultar exam_pages: ${error.message}`);
   }
 
+  if (nodeError) {
+    throw new Error(`No se pudo consultar language_nodes: ${nodeError.message}`);
+  }
+
   if (!examPage) {
     notFound();
+  }
+
+  const destination = resolveExamLink({
+    destinationUrl: examPage.destination_url,
+    clientId: examPage.legacy_client_id,
+    node: languageNode?.node,
+  });
+
+  // La página existe pero no hay link que servir. Se corta aquí en vez de pintar
+  // un botón que no lleva a ninguna parte: un alumno delante de un enlace muerto
+  // no sabe qué hacer, y así queda además en los logs como lo que es, un fallo de
+  // datos. Con la restricción exam_pages_link_resolvable solo puede pasar si el
+  // idioma se ha quedado sin node.
+  if (!destination) {
+    throw new Error(
+      `Sin link para /${slug}/${languageCode}: la fila no trae destination_url y falta el node de «${languageCode}» en language_nodes.`,
+    );
   }
 
   const languageLabel =
@@ -121,7 +157,7 @@ export default async function ExamAccessPage({ params }: PageProps) {
                 Único uso del rojo como superficie en toda la página — es el
                 elemento que debe llamar la atención. */}
             <a
-              href={examPage.destination_url}
+              href={destination}
               className="inline-block cursor-pointer bg-[#B51E40] px-9 py-4 text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
             >
               Ir a mi examen →

@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 
 import { ClientRows } from "@/app/admin/client-rows";
 import type { AdminClient } from "@/app/admin/edit-client-form";
+import type { LanguageNodes } from "@/lib/exam-link";
 import { LANGUAGES } from "@/lib/languages";
 import { slugify } from "@/lib/slugify";
 
@@ -12,7 +13,13 @@ import { slugify } from "@/lib/slugify";
  * vino en la respuesta: el listado del panel es de decenas de clientes, así que
  * ir al servidor por cada tecla costaría más de lo que ahorra.
  */
-export function ClientsTable({ clients }: { clients: AdminClient[] }) {
+export function ClientsTable({
+  clients,
+  nodes,
+}: {
+  clients: AdminClient[];
+  nodes: LanguageNodes;
+}) {
   const [search, setSearch] = useState("");
   const [language, setLanguage] = useState("");
   const searchId = useId();
@@ -103,6 +110,7 @@ export function ClientsTable({ clients }: { clients: AdminClient[] }) {
               <ClientRows
                 key={client.client_slug}
                 client={client}
+                nodes={nodes}
                 languageFilter={language}
               />
             ))

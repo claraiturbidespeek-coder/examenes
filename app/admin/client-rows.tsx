@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { EditClientForm, type AdminClient } from "@/app/admin/edit-client-form";
+import { resolveExamLink, type LanguageNodes } from "@/lib/exam-link";
 import { languageLabel } from "@/lib/languages";
 
 /**
@@ -16,9 +17,11 @@ import { languageLabel } from "@/lib/languages";
  */
 export function ClientRows({
   client,
+  nodes,
   languageFilter,
 }: {
   client: AdminClient;
+  nodes: LanguageNodes;
   languageFilter?: string;
 }) {
   const [editing, setEditing] = useState(false);
@@ -49,26 +52,43 @@ export function ClientRows({
         // muestra esa misma lista, y verla dos veces invita a dudar de cuál manda.
         <tr>
           <td colSpan={3} className="p-4">
-            <EditClientForm client={client} onClose={() => setEditing(false)} />
+            <EditClientForm
+              client={client}
+              nodes={nodes}
+              onClose={() => setEditing(false)}
+            />
           </td>
         </tr>
       ) : (
-        visiblePages.map((page) => (
-          <tr key={page.id}>
-            <td className="px-4 py-3 text-neutral-700">{languageLabel(page.language)}</td>
-            <td className="px-4 py-3">
-              <a
-                href={`/${client.client_slug}/${page.language}`}
-                className="font-mono text-neutral-700 underline underline-offset-2 hover:text-neutral-900"
-              >
-                /{client.client_slug}/{page.language}
-              </a>
-            </td>
-            <td className="max-w-xs truncate px-4 py-3 text-neutral-600">
-              {page.destination_url}
-            </td>
-          </tr>
-        ))
+        visiblePages.map((page) => {
+          const link = resolveExamLink({
+            destinationUrl: page.destination_url,
+            clientId: client.legacy_client_id || null,
+            node: nodes[page.language],
+          });
+
+          return (
+            <tr key={page.id}>
+              <td className="px-4 py-3 text-neutral-700">{languageLabel(page.language)}</td>
+              <td className="px-4 py-3">
+                <a
+                  href={`/${client.client_slug}/${page.language}`}
+                  className="font-mono text-neutral-700 underline underline-offset-2 hover:text-neutral-900"
+                >
+                  /{client.client_slug}/{page.language}
+                </a>
+              </td>
+              <td className="max-w-xs truncate px-4 py-3 text-neutral-600">
+                {link ?? (
+                  // Ni link propio ni con qué construirlo. La restricción de la
+                  // base de datos lo hace difícil, pero si pasa hay que verlo
+                  // aquí y no descubrirlo por un alumno.
+                  <span className="text-red-700">Sin link: revisa el ID de cliente y el node.</span>
+                )}
+              </td>
+            </tr>
+          );
+        })
       )}
     </tbody>
   );

@@ -2,6 +2,7 @@ import { signOut } from "@/app/admin/actions";
 import { ClientsTable } from "@/app/admin/clients-table";
 import type { AdminClient } from "@/app/admin/edit-client-form";
 import { NewPageForm } from "@/app/admin/new-page-form";
+import type { LanguageNodes } from "@/lib/exam-link";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -11,11 +12,22 @@ export default async function AdminPage() {
   // RLS devuelve vacío en vez de exponer la tabla entera.
   const supabase = await createServerSupabaseClient();
 
-  const { data: pages, error } = await supabase
-    .from("exam_pages")
-    .select("id, client_slug, language, client_name, destination_url, legacy_client_id")
-    .order("client_name", { ascending: true })
-    .order("language", { ascending: true });
+  // Las dos consultas son independientes, así que van a la vez.
+  const [{ data: pages, error }, { data: languageNodes, error: nodesError }] =
+    await Promise.all([
+      supabase
+        .from("exam_pages")
+        .select("id, client_slug, language, client_name, destination_url, legacy_client_id")
+        .order("client_name", { ascending: true })
+        .order("language", { ascending: true }),
+      supabase.from("language_nodes").select("language, node"),
+    ]);
+
+  // Idioma -> node. Los formularios lo necesitan para construir el link y para
+  // saber qué idiomas todavía no se pueden dar de alta.
+  const nodes: LanguageNodes = Object.fromEntries(
+    (languageNodes ?? []).map((row) => [row.language, row.node]),
+  );
 
   // La tabla guarda una fila por cliente+idioma, pero el panel se edita por
   // cliente. Se agrupa por client_slug, que es lo que de verdad identifica al
@@ -62,7 +74,7 @@ export default async function AdminPage() {
       </header>
 
       <div className="mt-8">
-        <NewPageForm />
+        <NewPageForm nodes={nodes} />
       </div>
 
       {error ? (
@@ -71,8 +83,17 @@ export default async function AdminPage() {
         </p>
       ) : null}
 
+      {/* Sin nodes no se puede construir ningún link ni saber qué idiomas están
+          disponibles, así que se avisa en vez de dejar el alta medio muerta sin
+          explicación. */}
+      {nodesError ? (
+        <p role="alert" className="mt-8 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          No se pudieron cargar los nodes de idioma: {nodesError.message}
+        </p>
+      ) : null}
+
       <div className="mt-8">
-        <ClientsTable clients={[...clients.values()]} />
+        <ClientsTable clients={[...clients.values()]} nodes={nodes} />
       </div>
     </main>
   );
