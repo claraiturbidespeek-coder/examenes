@@ -1,5 +1,8 @@
 /**
- * Los cuatro pasos del carrusel de instrucciones.
+ * Los cuatro pasos de las instrucciones.
+ *
+ * Son cuatro y la cuadrícula que los pinta cuenta con ello: reparte el alto en
+ * dos filas de dos. Con otro número quedaría una fila coja o de más.
  *
  * Son fijos: iguales para todos los clientes y todos los idiomas. No dependen de
  * exam_pages, así que no se guardan en base de datos.

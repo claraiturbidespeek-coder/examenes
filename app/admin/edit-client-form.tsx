@@ -33,6 +33,11 @@ const inputClass =
   "mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-neutral-900";
 const labelClass = "block text-sm font-medium text-neutral-700";
 
+// Rótulo de un dato que calcula la aplicación, no de un campo que se rellena. Se
+// distingue a propósito de labelClass: cuando los dos se ven igual, el dato de
+// solo lectura se lee como un campo que no te dejan tocar.
+const resultLabelClass = "text-xs font-medium uppercase tracking-wide text-neutral-500";
+
 export function EditClientForm({
   client,
   nodes,
@@ -110,15 +115,44 @@ export function EditClientForm({
   // puede editarse sin inventarse un ID que no tiene.
   const needsClientId = rows.some((row) => !row.destinationUrl);
 
-  /** Lo que se va a servir en esa fila, y de dónde sale. */
-  const resolvedLink = (row: Row) => {
+  /**
+   * Lo que se va a servir en esa fila y de dónde sale, o qué falta todavía para
+   * poder construirlo. Se nombra el dato que falta en concreto en vez de una
+   * frase genérica, para no dejar a nadie buscando qué le queda por rellenar.
+   */
+  const resultingUrl = (row: Row) => {
     if (row.destinationUrl) {
-      return { url: row.destinationUrl, explicit: true };
+      return { url: row.destinationUrl, explicit: true, missing: null };
     }
+
+    const clientId = legacyId.trim();
     const node = row.language ? nodes[row.language] : null;
-    return legacyId.trim() && node
-      ? { url: buildExamLink({ clientId: legacyId.trim(), node }), explicit: false }
-      : { url: null, explicit: false };
+
+    if (clientId && node) {
+      return {
+        url: buildExamLink({ clientId, node }),
+        explicit: false,
+        missing: null,
+      };
+    }
+    if (!row.language && !clientId) {
+      return {
+        url: null,
+        explicit: false,
+        missing: "Falta elegir el idioma y escribir el ID de cliente.",
+      };
+    }
+    if (!row.language) {
+      return { url: null, explicit: false, missing: "Falta elegir el idioma." };
+    }
+    if (!clientId) {
+      return { url: null, explicit: false, missing: "Falta escribir el ID de cliente." };
+    }
+    return {
+      url: null,
+      explicit: false,
+      missing: `${languageLabel(row.language)} todavía no tiene node configurado.`,
+    };
   };
 
   return (
@@ -163,8 +197,8 @@ export function EditClientForm({
           </div>
 
           <div>
-            <p className={labelClass}>URL base</p>
-            <p className="mt-1.5 rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-2.5 font-mono text-sm text-neutral-700">
+            <p className={resultLabelClass}>URL base</p>
+            <p className="mt-1 font-mono text-sm text-neutral-800">
               /{client.client_slug}/…
             </p>
             <p className="mt-1 text-xs text-neutral-600">
@@ -244,46 +278,55 @@ export function EditClientForm({
 
               <div className="mt-3 space-y-3">
                 <div>
-                  <label htmlFor={`edit_language-${row.key}`} className={labelClass}>
-                    Idioma
-                  </label>
                   {row.id ? (
                     // El idioma de una fila que ya existe no se edita: cambiarlo
                     // sería mover la URL pública sin decirlo. Para eso hay que
                     // eliminar el idioma (con su aviso) y añadir el nuevo.
-                    <p className="mt-1.5 rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-2.5 text-sm text-neutral-700">
-                      {languageLabel(row.language)}
-                    </p>
+                    //
+                    // Al no haber campo tampoco hay <label>: un `for` apuntando a
+                    // un id que no existe no rotula nada, solo despista al lector
+                    // de pantalla.
+                    <>
+                      <p className={resultLabelClass}>Idioma</p>
+                      <p className="mt-1 text-sm text-neutral-800">
+                        {languageLabel(row.language)}
+                      </p>
+                    </>
                   ) : (
-                    <select
-                      id={`edit_language-${row.key}`}
-                      value={row.language}
-                      onChange={(e) => updateRow(row.key, { language: e.target.value })}
-                      required
-                      className={`${inputClass} cursor-pointer bg-white`}
-                    >
-                      <option value="" disabled>
-                        Selecciona un idioma…
-                      </option>
-                      {LANGUAGES.map((language) => {
-                        const withoutNode = !nodes[language.code];
-                        return (
-                          <option
-                            key={language.code}
-                            value={language.code}
-                            // Sin node no hay link que construir para un idioma
-                            // nuevo, así que no se puede añadir todavía.
-                            disabled={
-                              withoutNode ||
-                              (taken.has(language.code) && row.language !== language.code)
-                            }
-                          >
-                            {language.label}
-                            {withoutNode ? " — sin node configurado" : ""}
-                          </option>
-                        );
-                      })}
-                    </select>
+                    <>
+                      <label htmlFor={`edit_language-${row.key}`} className={labelClass}>
+                        Idioma
+                      </label>
+                      <select
+                        id={`edit_language-${row.key}`}
+                        value={row.language}
+                        onChange={(e) => updateRow(row.key, { language: e.target.value })}
+                        required
+                        className={`${inputClass} cursor-pointer bg-white`}
+                      >
+                        <option value="" disabled>
+                          Selecciona un idioma…
+                        </option>
+                        {LANGUAGES.map((language) => {
+                          const withoutNode = !nodes[language.code];
+                          return (
+                            <option
+                              key={language.code}
+                              value={language.code}
+                              // Sin node no hay link que construir para un idioma
+                              // nuevo, así que no se puede añadir todavía.
+                              disabled={
+                                withoutNode ||
+                                (taken.has(language.code) && row.language !== language.code)
+                              }
+                            >
+                              {language.label}
+                              {withoutNode ? " — sin node configurado" : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </>
                   )}
                   {state.entryErrors?.[i]?.language ? (
                     <p className="mt-1 text-xs text-red-700">{state.entryErrors[i].language}</p>
@@ -293,21 +336,28 @@ export function EditClientForm({
                 {/* El link no se edita: o se construye con el ID de cliente y el
                     node del idioma, o la fila trae el suyo propio del inventario.
                     Un campo editable aquí sería una tercera versión compitiendo
-                    con esas dos. */}
+                    con esas dos.
+
+                    Y se presenta como texto, no dentro de una caja con borde: con
+                    el aspecto de un campo se leía como un input deshabilitado. */}
                 <div>
-                  <p className={labelClass}>Link del examen</p>
-                  <p className="mt-1.5 overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-2.5 font-mono text-xs whitespace-nowrap text-neutral-700">
-                    {resolvedLink(row).url ?? (
-                      <span className="font-sans text-neutral-500">
-                        Se construye al elegir idioma y escribir el ID de cliente.
-                      </span>
-                    )}
-                  </p>
-                  <p className="mt-1 text-xs text-neutral-600">
-                    {resolvedLink(row).explicit
-                      ? "Link propio de esta fila, heredado del inventario. Manda sobre el construido y se conserva al guardar."
-                      : "Se construye con el ID de cliente y el node del idioma."}
-                  </p>
+                  <p className={resultLabelClass}>URL resultante</p>
+                  {resultingUrl(row).url ? (
+                    <>
+                      <p className="mt-1 font-mono text-xs break-all text-neutral-800">
+                        {resultingUrl(row).url}
+                      </p>
+                      <p className="mt-1 text-xs text-neutral-600">
+                        {resultingUrl(row).explicit
+                          ? "Link propio de esta fila, heredado del inventario. Manda sobre el construido y se conserva al guardar."
+                          : "Se construye con el ID de cliente y el node del idioma."}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {resultingUrl(row).missing}
+                    </p>
+                  )}
                 </div>
               </div>
 

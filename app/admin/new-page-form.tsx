@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 
 import { createExamPages, type ExamPagesState } from "@/app/admin/actions";
 import { buildExamLink, type LanguageNodes } from "@/lib/exam-link";
-import { LANGUAGES } from "@/lib/languages";
+import { LANGUAGES, languageLabel } from "@/lib/languages";
 import { slugify } from "@/lib/slugify";
 
 type Entry = {
@@ -21,6 +21,11 @@ const emptyEntry = (id: number): Entry => ({
 const inputClass =
   "mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-neutral-900";
 const labelClass = "block text-sm font-medium text-neutral-700";
+
+// Rótulo de un dato que calcula la aplicación, no de un campo que se rellena. Se
+// distingue a propósito de labelClass: cuando los dos se ven igual, el dato de
+// solo lectura se lee como un campo que no te dejan tocar.
+const resultLabelClass = "text-xs font-medium uppercase tracking-wide text-neutral-500";
 
 export function NewPageForm({ nodes }: { nodes: LanguageNodes }) {
   const [open, setOpen] = useState(false);
@@ -69,12 +74,35 @@ export function NewPageForm({ nodes }: { nodes: LanguageNodes }) {
   // que el duplicado no llegue siquiera a intentarse.
   const chosen = new Set(entries.map((e) => e.language).filter(Boolean));
 
-  /** El link tal y como quedará, en cuanto haya ID de cliente e idioma con node. */
-  const linkPreview = (language: string) => {
+  /**
+   * La URL tal y como quedará, o qué falta todavía para poder construirla.
+   *
+   * Se dice el dato que falta en concreto en vez de una frase genérica: quien
+   * está a medio rellenar la fila sabe así si le toca elegir idioma, subir a
+   * escribir el ID, o las dos cosas.
+   */
+  const resultingUrl = (language: string) => {
+    const clientId = legacyId.trim();
     const node = language ? nodes[language] : null;
-    return legacyId.trim() && node
-      ? buildExamLink({ clientId: legacyId.trim(), node })
-      : null;
+
+    if (clientId && node) {
+      return { url: buildExamLink({ clientId, node }), missing: null };
+    }
+    if (!language && !clientId) {
+      return { url: null, missing: "Falta elegir el idioma y escribir el ID de cliente." };
+    }
+    if (!language) {
+      return { url: null, missing: "Falta elegir el idioma." };
+    }
+    if (!clientId) {
+      return { url: null, missing: "Falta escribir el ID de cliente." };
+    }
+    // El desplegable no deja elegir un idioma sin node, así que aquí solo se
+    // llega si lo han quitado con la fila ya rellenada.
+    return {
+      url: null,
+      missing: `${languageLabel(language)} todavía no tiene node configurado.`,
+    };
   };
 
   if (!open) {
@@ -231,16 +259,23 @@ export function NewPageForm({ nodes }: { nodes: LanguageNodes }) {
 
                 {/* El link ya no se escribe, pero sí se enseña: es lo que va a
                     recibir el alumno y no debería quedar invisible hasta después
-                    de guardar. */}
+                    de guardar.
+
+                    Va como texto suelto y no dentro de una caja con borde: con
+                    el aspecto de un campo se leía como un input deshabilitado, y
+                    entonces parece algo que habría que rellenar y no se deja, en
+                    vez del resultado de lo que ya se ha rellenado. */}
                 <div>
-                  <p className={labelClass}>Link del examen</p>
-                  <p className="mt-1.5 overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-2.5 font-mono text-xs whitespace-nowrap text-neutral-700">
-                    {linkPreview(entry.language) ?? (
-                      <span className="font-sans text-neutral-500">
-                        Se construye al elegir idioma y escribir el ID de cliente.
-                      </span>
-                    )}
-                  </p>
+                  <p className={resultLabelClass}>URL resultante</p>
+                  {resultingUrl(entry.language).url ? (
+                    <p className="mt-1 font-mono text-xs break-all text-neutral-800">
+                      {resultingUrl(entry.language).url}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {resultingUrl(entry.language).missing}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

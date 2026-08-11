@@ -1,7 +1,9 @@
 import { Montserrat } from "next/font/google";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import { InstructionsCarousel } from "@/app/[client]/[language]/instructions-carousel";
+import { InstructionsGrid } from "@/app/[client]/[language]/instructions-grid";
+import portada from "@/public/plantilla/portada.webp";
 import { INSTRUCTION_STEPS } from "@/lib/exam-instructions";
 import { resolveExamLink } from "@/lib/exam-link";
 import { LANGUAGES } from "@/lib/languages";
@@ -140,10 +142,20 @@ export default async function ExamAccessPage({ params }: PageProps) {
               corresponde.
             </p>
 
-            {/* Placeholder de ilustración: entre los assets recibidos no hay
-                ninguno equivalente, así que se queda a la espera. */}
-            <div className="flex min-h-0 flex-1 items-center justify-center border-2 border-dashed border-white/25 text-[11px] uppercase tracking-[0.06em] text-white/50">
-              Ilustración
+            {/* Decorativa: acompaña al texto de al lado, no añade nada que no
+                esté dicho, así que va con alt vacío.
+
+                object-contain con la altura acotada por el contenedor: la
+                ilustración es muy apaisada (2.55:1) y sin acotar empujaría al
+                resto del contenido fuera de la tarjeta. El webp trae
+                transparencia, así que apoya sobre el navy sin recuadro. */}
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+              <Image
+                src={portada}
+                alt=""
+                priority
+                className="max-h-full w-full object-contain"
+              />
             </div>
 
             <p className="text-[13px] leading-relaxed text-white/70">
@@ -171,10 +183,10 @@ export default async function ExamAccessPage({ params }: PageProps) {
           style={{ background: NAVY }}
         >
           <div className="flex-none">
-            <h2 className="text-xl font-semibold text-white">Antes de empezar</h2>
+            <h2 className="text-xl font-semibold text-white">Sigue las instrucciones:</h2>
           </div>
 
-          <InstructionsCarousel steps={INSTRUCTION_STEPS} />
+          <InstructionsGrid steps={INSTRUCTION_STEPS} />
         </section>
       </div>
     </div>
