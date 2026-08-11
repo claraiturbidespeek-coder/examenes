@@ -10,9 +10,9 @@ export default async function LoginPage({ searchParams }: PageProps) {
   return (
     <main className="flex flex-1 items-center justify-center p-6">
       <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-widest text-neutral-600">
-          S-Peak
-        </p>
+        {/* eslint-disable-next-line @next/next/no-img-element -- ver el panel:
+            SVG de marca, no pasa por next/image. */}
+        <img src="/logo_navy.svg" alt="S-Peak" className="w-24" />
         <h1 className="mt-3 text-xl font-semibold text-neutral-900">
           Panel de administración
         </h1>

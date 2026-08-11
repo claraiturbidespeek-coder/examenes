@@ -42,9 +42,10 @@ export default async function AdminPage() {
     <main className="mx-auto w-full max-w-4xl flex-1 p-6 sm:p-10">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-neutral-600">
-            S-Peak
-          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element -- SVG de marca:
+              no hay nada que optimizar y next/image no procesa SVG local sin
+              habilitar dangerouslyAllowSVG. */}
+          <img src="/logo_navy.svg" alt="S-Peak" className="w-28" />
           <h1 className="mt-2 text-2xl font-semibold text-neutral-900">
             Páginas de acceso
           </h1>
