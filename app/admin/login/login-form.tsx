@@ -58,7 +58,7 @@ export function LoginForm({ next }: { next: string }) {
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-xl bg-neutral-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-neutral-700 disabled:opacity-60"
+        className="w-full cursor-pointer rounded-xl bg-neutral-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-neutral-700 disabled:cursor-default disabled:opacity-60"
       >
         {isPending ? "Entrando…" : "Entrar"}
       </button>

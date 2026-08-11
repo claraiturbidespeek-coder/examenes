@@ -53,7 +53,7 @@ export default async function AdminPage() {
         <form action={signOut}>
           <button
             type="submit"
-            className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900"
+            className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900"
           >
             Cerrar sesión
           </button>

@@ -221,7 +221,7 @@ export function EditClientForm({
                       value={row.language}
                       onChange={(e) => updateRow(row.key, { language: e.target.value })}
                       required
-                      className={`${inputClass} bg-white`}
+                      className={`${inputClass} cursor-pointer bg-white`}
                     >
                       <option value="" disabled>
                         Selecciona un idioma…

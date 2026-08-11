@@ -66,7 +66,7 @@ export function ClientsTable({ clients }: { clients: AdminClient[] }) {
             id={languageId}
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="mt-1.5 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-900"
+            className="mt-1.5 w-full cursor-pointer rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-900"
           >
             <option value="">Todos los idiomas</option>
             {LANGUAGES.map((option) => (
