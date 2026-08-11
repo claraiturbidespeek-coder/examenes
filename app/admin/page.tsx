@@ -1,4 +1,6 @@
 import { signOut } from "@/app/admin/actions";
+import { ClientRows } from "@/app/admin/client-rows";
+import type { AdminClient } from "@/app/admin/edit-client-form";
 import { NewPageForm } from "@/app/admin/new-page-form";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -11,9 +13,30 @@ export default async function AdminPage() {
 
   const { data: pages, error } = await supabase
     .from("exam_pages")
-    .select("id, client_slug, language, client_name, destination_url")
+    .select("id, client_slug, language, client_name, destination_url, legacy_client_id")
     .order("client_name", { ascending: true })
     .order("language", { ascending: true });
+
+  // La tabla guarda una fila por cliente+idioma, pero el panel se edita por
+  // cliente. Se agrupa por client_slug, que es lo que de verdad identifica al
+  // cliente: el nombre puede repetirse o cambiar, el slug no.
+  const clients = new Map<string, AdminClient>();
+
+  for (const page of pages ?? []) {
+    const entry = { id: page.id, language: page.language, destination_url: page.destination_url };
+    const group = clients.get(page.client_slug);
+
+    if (group) {
+      group.pages.push(entry);
+    } else {
+      clients.set(page.client_slug, {
+        client_slug: page.client_slug,
+        client_name: page.client_name,
+        legacy_client_id: page.legacy_client_id ?? "",
+        pages: [entry],
+      });
+    }
+  }
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 p-6 sm:p-10">
@@ -51,39 +74,25 @@ export default async function AdminPage() {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-600">
             <tr>
-              <th className="px-4 py-3 font-medium">Cliente</th>
+              <th className="px-4 py-3 font-medium">Idioma</th>
               <th className="px-4 py-3 font-medium">URL pública</th>
               <th className="px-4 py-3 font-medium">Destino</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-100">
-            {pages?.length ? (
-              pages.map((page) => (
-                <tr key={page.id}>
-                  <td className="px-4 py-3 font-medium text-neutral-900">
-                    {page.client_name}
-                  </td>
-                  <td className="px-4 py-3">
-                    <a
-                      href={`/${page.client_slug}/${page.language}`}
-                      className="font-mono text-neutral-700 underline underline-offset-2 hover:text-neutral-900"
-                    >
-                      /{page.client_slug}/{page.language}
-                    </a>
-                  </td>
-                  <td className="max-w-xs truncate px-4 py-3 text-neutral-600">
-                    {page.destination_url}
-                  </td>
-                </tr>
-              ))
-            ) : (
+
+          {clients.size > 0 ? (
+            [...clients.values()].map((client) => (
+              <ClientRows key={client.client_slug} client={client} />
+            ))
+          ) : (
+            <tbody>
               <tr>
                 <td colSpan={3} className="px-4 py-8 text-center text-neutral-600">
                   Todavía no hay ninguna página. Añade la primera.
                 </td>
               </tr>
-            )}
-          </tbody>
+            </tbody>
+          )}
         </table>
       </div>
     </main>

@@ -21,3 +21,12 @@ export const LANGUAGE_CODES = LANGUAGES.map((l) => l.code) as unknown as [
   string,
   ...string[],
 ];
+
+/**
+ * Nombre para mostrar de un código guardado. Devuelve el propio código si no está
+ * en la lista: en la base de datos puede quedar algún idioma de la migración que
+ * aquí ya no se ofrezca, y enseñar el código es más útil que una celda vacía.
+ */
+export function languageLabel(code: string) {
+  return LANGUAGES.find((language) => language.code === code)?.label ?? code;
+}
