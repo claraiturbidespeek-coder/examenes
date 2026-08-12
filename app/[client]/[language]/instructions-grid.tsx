@@ -3,22 +3,22 @@ import Image from "next/image";
 import type { InstructionStep } from "@/lib/exam-instructions";
 
 const NAVY = "#1A3C4D";
-const RED = "#B51E40";
 
 /**
- * Los pasos, apilados en una sola columna.
+ * Las instrucciones, apiladas en una sola columna.
  *
  * No lleva "use client" ni estado: sin carrusel no queda nada que interactuar, y
- * los pasos son fijos. Se resuelve entero en el servidor y no manda JavaScript.
+ * el contenido es fijo. Se resuelve entero en el servidor y no manda JavaScript.
  *
- * Sin flechas entre tarjetas: el orden lo dice el «Paso N» de cada una, y en una
- * pila vertical el propio apilado ya lo cuenta.
+ * Sin numerar y sin flechas: no son pasos que haya que dar en orden, son cosas
+ * que conviene saber antes de empezar. Numerarlas hacía prometer una secuencia
+ * que no existe.
  */
 export function InstructionsGrid({ steps }: { steps: InstructionStep[] }) {
   return (
     <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-1 gap-7">
-      {steps.map((step, i) => (
-        <StepCard key={step.title} step={step} number={i + 1} />
+      {steps.map((step) => (
+        <StepCard key={step.title} step={step} />
       ))}
     </div>
   );
@@ -30,7 +30,7 @@ export function InstructionsGrid({ steps }: { steps: InstructionStep[] }) {
  * pocos píxeles de alto a lo ancho de toda la tarjeta, y el conjunto quedaba
  * descompensado.
  */
-function StepCard({ step, number }: { step: InstructionStep; number: number }) {
+function StepCard({ step }: { step: InstructionStep }) {
   return (
     <article className="flex min-h-0 items-center gap-6 overflow-hidden bg-white px-8 py-5">
       {/* self-stretch para que la caja de la imagen tome el alto de la tarjeta y
@@ -40,14 +40,8 @@ function StepCard({ step, number }: { step: InstructionStep; number: number }) {
         <Image src={step.image} alt="" priority className="max-h-full w-full object-contain" />
       </div>
 
-      <div className="min-w-0 flex-1 text-center">
-        <p
-          className="text-xs font-semibold uppercase tracking-[0.12em]"
-          style={{ color: RED }}
-        >
-          Paso {number}
-        </p>
-        <h3 className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
+      <div className="min-w-0 flex-1 text-left">
+        <h3 className="text-base font-semibold" style={{ color: NAVY }}>
           {step.title}
         </h3>
         <p className="mt-1.5 text-[13px] leading-relaxed text-neutral-700">{step.body}</p>

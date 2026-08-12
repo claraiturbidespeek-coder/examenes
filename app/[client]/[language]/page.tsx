@@ -183,7 +183,7 @@ export default async function ExamAccessPage({ params }: PageProps) {
           style={{ background: NAVY }}
         >
           <div className="flex-none">
-            <h2 className="text-xl font-semibold text-white">Sigue las instrucciones:</h2>
+            <h2 className="text-xl font-semibold text-white">Antes de empezar</h2>
           </div>
 
           <InstructionsGrid steps={INSTRUCTION_STEPS} />
