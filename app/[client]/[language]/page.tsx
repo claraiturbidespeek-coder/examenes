@@ -133,34 +133,34 @@ export default async function ExamAccessPage({ params }: PageProps) {
               Examen de ubicación
             </p>
 
+            {/* Decorativa: acompaña al texto, no añade nada que no esté dicho,
+                así que va con alt vacío.
+
+                object-contain con la altura acotada por el contenedor: la
+                ilustración es muy apaisada (2.55:1) y sin acotar empujaría al
+                resto del contenido fuera de la tarjeta. El webp trae
+                transparencia, así que apoya sobre el navy sin recuadro.
+
+                object-left la pega al borde izquierdo: con object-contain, la
+                imagen se centra dentro de su caja en cuanto le sobra ancho, y
+                quedaba descolgada del texto que tiene encima y debajo. */}
+            <div className="flex min-h-0 flex-1 items-center">
+              <Image
+                src={portada}
+                alt=""
+                priority
+                className="max-h-full w-full object-contain object-left"
+              />
+            </div>
+
             <h1 className="text-[28px] font-semibold leading-[1.35] text-white">
               Bienvenido al programa de {languageLabel} de {examPage.client_name}
             </h1>
 
             <p className="text-[15px] leading-relaxed" style={{ color: ON_NAVY_SOFT }}>
               Este examen sitúa tu nivel actual para asignarte el grupo que te
-              corresponde.
-            </p>
-
-            {/* Decorativa: acompaña al texto de al lado, no añade nada que no
-                esté dicho, así que va con alt vacío.
-
-                object-contain con la altura acotada por el contenedor: la
-                ilustración es muy apaisada (2.55:1) y sin acotar empujaría al
-                resto del contenido fuera de la tarjeta. El webp trae
-                transparencia, así que apoya sobre el navy sin recuadro. */}
-            <div className="flex min-h-0 flex-1 items-center justify-center">
-              <Image
-                src={portada}
-                alt=""
-                priority
-                className="max-h-full w-full object-contain"
-              />
-            </div>
-
-            <p className="text-[13px] leading-relaxed text-white/70">
-              No es una prueba que se apruebe o se suspenda: sirve para conocer tu
-              nivel real, así que respóndelo con naturalidad.
+              corresponde. No es una prueba que se apruebe o se suspenda: sirve
+              para conocer tu nivel real, así que respóndelo con naturalidad.
             </p>
           </div>
 

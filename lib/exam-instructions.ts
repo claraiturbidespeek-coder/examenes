@@ -1,8 +1,9 @@
 /**
- * Los cuatro pasos de las instrucciones.
+ * Los tres pasos de las instrucciones.
  *
- * Son cuatro y la cuadrícula que los pinta cuenta con ello: reparte el alto en
- * dos filas de dos. Con otro número quedaría una fila coja o de más.
+ * Se apilan en una sola columna que reparte el alto disponible entre ellos, así
+ * que añadir o quitar uno no rompe nada: cada tarjeta se hace más baja o más
+ * alta. Pasado cierto número dejarían de caber sin apretar el texto.
  *
  * Son fijos: iguales para todos los clientes y todos los idiomas. No dependen de
  * exam_pages, así que no se guardan en base de datos.
@@ -19,7 +20,6 @@ import type { StaticImageData } from "next/image";
 import recurso1 from "@/public/plantilla/recurso1.webp";
 import recurso2 from "@/public/plantilla/recurso2.webp";
 import recurso3 from "@/public/plantilla/recurso3.webp";
-import recurso4 from "@/public/plantilla/recurso4.webp";
 
 export type InstructionStep = {
   title: string;
@@ -51,10 +51,5 @@ export const INSTRUCTION_STEPS: InstructionStep[] = [
     title: "Una sola exhibición",
     body: "El examen se completa en una única sesión, de principio a fin. No se puede pausar y retomar más tarde, así que asegúrate de disponer del rato entero antes de empezar.",
     image: recurso3,
-  },
-  {
-    title: "Dispositivo compatible",
-    body: "Hazlo desde un ordenador con conexión estable. No es compatible con tablets ni teléfonos móviles.",
-    image: recurso4,
   },
 ];
