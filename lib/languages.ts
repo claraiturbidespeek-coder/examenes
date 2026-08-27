@@ -7,6 +7,12 @@
  *
  * Fuente única para el formulario y para la validación del servidor, de modo que
  * no puedan desincronizarse.
+ *
+ * Alemán ('de') se retiró de esta lista porque S-Peak dejó de ofrecer examen en
+ * ese idioma, pero sigue permitido en las restricciones de la base
+ * (exam_pages_language_allowed y language_nodes_language_allowed) a propósito:
+ * no hace daño y evita una migración si el idioma vuelve a ofrecerse. Ver
+ * supabase/migrations/0005_german_retired_from_selector.sql.
  */
 export const LANGUAGES = [
   { code: "es", label: "Español" },
@@ -14,7 +20,6 @@ export const LANGUAGES = [
   { code: "fr", label: "Francés" },
   { code: "it", label: "Italiano" },
   { code: "pt", label: "Portugués" },
-  { code: "de", label: "Alemán" },
 ] as const;
 
 export const LANGUAGE_CODES = LANGUAGES.map((l) => l.code) as unknown as [
