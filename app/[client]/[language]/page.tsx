@@ -104,7 +104,7 @@ export default async function ExamAccessPage({ params }: PageProps) {
             hay nada que optimizar y next/image no procesa SVG local sin más. */}
         <img src="/logo_white.svg" alt="S-Peak" className="w-44" />
         <p className="max-w-xs text-lg font-semibold leading-snug text-white">
-          Este examen debe tomarse desde una computadora.
+          Esta evaluación debe tomarse desde una computadora.
         </p>
         <p className="max-w-xs text-sm" style={{ color: ON_NAVY_SOFT }}>
           Abre este mismo enlace en una computadora para empezar.
@@ -125,42 +125,35 @@ export default async function ExamAccessPage({ params }: PageProps) {
             <img src="/logo_white.svg" alt="S-Peak" className="w-36" />
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col justify-center gap-6">
-            <p
-              className="text-xs font-semibold uppercase tracking-[0.12em]"
-              style={{ color: ON_NAVY_SOFT }}
-            >
-              Examen de ubicación
+          <div className="flex min-h-0 flex-1 flex-col justify-center gap-8">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-white">
+              Evaluación de ubicación
             </p>
 
-            {/* Decorativa: acompaña al texto, no añade nada que no esté dicho,
-                así que va con alt vacío.
+            {/* Ilustración desactivada por decisión de diseño (restaba
+                protagonismo al H1). Se deja comentada en vez de borrada para
+                poder reactivarla con un cambio mínimo; el import de `Image` y
+                `portada` sigue arriba para eso.
 
-                object-contain con la altura acotada por el contenedor: la
-                ilustración es muy apaisada (2.55:1) y sin acotar empujaría al
-                resto del contenido fuera de la tarjeta. El webp trae
-                transparencia, así que apoya sobre el navy sin recuadro.
-
-                object-left la pega al borde izquierdo: con object-contain, la
-                imagen se centra dentro de su caja en cuanto le sobra ancho, y
-                quedaba descolgada del texto que tiene encima y debajo. */}
-            <div className="flex min-h-0 flex-1 items-center">
+            <div className="flex h-24 items-center justify-center">
               <Image
                 src={portada}
                 alt=""
                 priority
-                className="max-h-full w-full object-contain object-left"
+                className="h-full w-auto object-contain"
               />
             </div>
+            */}
 
             <h1 className="text-[28px] font-semibold leading-[1.35] text-white">
               Bienvenido al programa de {languageLabel} de {examPage.client_name}
             </h1>
 
             <p className="text-[15px] leading-relaxed" style={{ color: ON_NAVY_SOFT }}>
-              Este examen sitúa tu nivel actual para asignarte el grupo que te
-              corresponde. No es una prueba que se apruebe o se suspenda: sirve
-              para conocer tu nivel real, así que respóndelo con naturalidad.
+              Esta evaluación sitúa su nivel actual para asignarle el grupo que
+              le corresponde. No es una evaluación que se apruebe o se
+              repruebe: sirve para conocer su nivel real, así que respóndala
+              con total honestidad.
             </p>
           </div>
 
@@ -172,7 +165,7 @@ export default async function ExamAccessPage({ params }: PageProps) {
               href={destination}
               className="inline-block cursor-pointer bg-[#B51E40] px-9 py-4 text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
             >
-              Ir a mi examen →
+              Ir a mi evaluación →
             </a>
           </div>
         </section>

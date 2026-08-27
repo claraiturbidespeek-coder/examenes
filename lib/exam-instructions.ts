@@ -38,18 +38,18 @@ export type InstructionStep = {
 
 export const INSTRUCTION_STEPS: InstructionStep[] = [
   {
-    title: "Duración del examen",
-    body: "El examen es adaptativo: las preguntas se ajustan a tus respuestas y se detiene automáticamente en cuanto identifica tu nivel. No tiene un número fijo de preguntas.",
+    title: "Duración de la evaluación",
+    body: "La evaluación es adaptativa: las preguntas se ajustan a sus respuestas y se detiene automáticamente en cuanto identifica su nivel. No tiene un número fijo de preguntas.",
     image: recurso1,
   },
   {
     title: "Ambiente tranquilo",
-    body: "Busca un sitio sin ruido ni interrupciones. Vas a necesitar escuchar con claridad, así que usa auriculares si los tienes a mano.",
+    body: "Busque un espacio sin ruido ni interrupciones. Necesitará escuchar con claridad, por lo que le sugerimos usar auriculares si los tiene disponibles.",
     image: recurso2,
   },
   {
     title: "Una sola exhibición",
-    body: "El examen se completa en una única sesión, de principio a fin. No se puede pausar y retomar más tarde, así que asegúrate de disponer del rato entero antes de empezar.",
+    body: "La evaluación se debe completar en una sola sesión, de principio a fin. No es posible pausarla para retomarla más tarde, por lo que le sugerimos asegurarse de contar con el tiempo suficiente antes de comenzar.",
     image: recurso3,
   },
 ];
